@@ -24,3 +24,12 @@ export function toDateInputValue(value) {
   if (Number.isNaN(date.getTime())) return ''
   return date.toISOString().slice(0, 10)
 }
+
+export function formatCount(value) {
+  return typeof value === 'number' ? String(value) : null
+}
+
+export function truncate(text, maxLength) {
+  if (!text) return text
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text
+}

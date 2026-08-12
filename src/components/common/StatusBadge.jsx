@@ -14,3 +14,20 @@ export function OracleStatusBadge({ status }) {
   }
   return <span className="status-badge status-badge--pending">{status}</span>
 }
+
+const SYNC_STATUS_STYLES = {
+  SUCCESS: { className: 'status-badge--ready', label: 'Success' },
+  FAILED: { className: 'status-badge--danger', label: 'Failed' },
+  RUNNING: { className: 'status-badge--pending', label: 'Running' },
+}
+
+export function SyncStatusBadge({ status, isRunning }) {
+  if (isRunning) {
+    return <span className="status-badge status-badge--pending">Running</span>
+  }
+  if (!status) {
+    return <span className="status-badge status-badge--muted">Never Synced</span>
+  }
+  const style = SYNC_STATUS_STYLES[status] || { className: 'status-badge--muted', label: status }
+  return <span className={`status-badge ${style.className}`}>{style.label}</span>
+}
