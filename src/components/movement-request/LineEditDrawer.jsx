@@ -1,28 +1,29 @@
 import { useState } from 'react'
 import { ItemSearchCombobox } from '../common/ItemSearchCombobox.jsx'
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
-import {
-  useUoms,
-  useTransactionTypes,
-  useSubinventories,
-  useLocators,
-  useReasons,
-} from '../../hooks/useReferenceData.js'
+import { LookupCombobox } from '../common/LookupCombobox.jsx'
+import { useUoms, useSubinventories, useReasons } from '../../hooks/useReferenceData.js'
+import { referenceApi } from '../../api/referenceApi.js'
+
+const ISSUE_TRANSACTION_TYPE_ID = 63
+const TRANSFER_TRANSACTION_TYPE_ID = 64
 
 function buildInitialForm(initialLine, headerDefaults) {
   if (initialLine) return { ...initialLine }
   return {
     itemNumber: '',
     itemDescription: '',
+    transactionType: null,
+    transactionTypeId: null,
+    itemChargeableFlag: null,
     requestedQuantity: '',
     uom: '',
     requiredDate: headerDefaults.requiredDate || '',
-    transactionType: headerDefaults.transactionType || '',
-    sourceSubinventory: headerDefaults.sourceSubinventory || '',
-    sourceLocator: '',
-    destinationSubinventory: headerDefaults.destinationSubinventory || '',
-    destinationLocator: '',
-    destinationAccount: headerDefaults.destinationAccount || '',
+    sourceSubinventory: '',
+    destinationSubinventory: '',
+    destinationAccount: '',
+    destinationAccountId: '',
+    destinationAccountLabel: '',
     requester: '',
     reason: '',
     reference: '',
@@ -39,11 +40,12 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
   const [errors, setErrors] = useState({})
 
   const uoms = useUoms()
-  const transactionTypes = useTransactionTypes()
-  const sourceSubinventories = useSubinventories(organizationCode)
-  const sourceLocators = useLocators(organizationCode, form.sourceSubinventory)
-  const destinationLocators = useLocators(organizationCode, form.destinationSubinventory)
+  const subinventories = useSubinventories(organizationCode)
   const reasons = useReasons()
+
+  const sourceSubinventoryOptions = subinventories.data.filter((s) => s.isSource)
+  const isIssue = form.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID
+  const isTransfer = form.transactionTypeId === TRANSFER_TRANSACTION_TYPE_ID
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -51,7 +53,13 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
   function handleItemSelect(item) {
     if (!item) {
-      set('itemNumber', '')
+      setForm((prev) => ({
+        ...prev,
+        itemNumber: '',
+        transactionType: null,
+        transactionTypeId: null,
+        itemChargeableFlag: null,
+      }))
       return
     }
     setForm((prev) => ({
@@ -59,7 +67,30 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
       itemNumber: item.itemNumber,
       itemDescription: item.description,
       uom: prev.uom || item.primaryUom,
+      transactionType: item.transactionType || null,
+      transactionTypeId: item.transactionTypeId || null,
+      itemChargeableFlag: item.chargeableFlag || null,
+      // Destination fields belong to a specific transaction type — clear whichever no longer applies.
+      destinationSubinventory: item.transactionTypeId === TRANSFER_TRANSACTION_TYPE_ID ? prev.destinationSubinventory : '',
+      destinationAccount: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccount : '',
+      destinationAccountId: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccountId : '',
+      destinationAccountLabel: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccountLabel : '',
     }))
+  }
+
+  function handleDestinationAccountSelect(account) {
+    setForm((prev) => ({
+      ...prev,
+      destinationAccountId: account ? account.oracleCodeCombinationId : '',
+      destinationAccount: account ? account.combinationCode : '',
+      destinationAccountLabel: account ? account.combinationCode : '',
+    }))
+  }
+
+  // Destination accounts are not organization-scoped on the backend and the full set (~7,771 rows)
+  // is searched and paginated server-side — never fetched or filtered client-side.
+  function searchDestinationAccounts(term, { offset } = {}) {
+    return referenceApi.searchDestinationAccounts(term, { offset })
   }
 
   function validate() {
@@ -69,6 +100,16 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
       nextErrors.requestedQuantity = 'Enter a quantity greater than 0.'
     }
     if (!form.uom) nextErrors.uom = 'UOM is required.'
+    if (!form.sourceSubinventory) nextErrors.sourceSubinventory = 'Source Subinventory is required.'
+    if (form.itemNumber && !form.transactionTypeId) {
+      nextErrors.itemNumber = 'This item has no derived transaction type. Try re-selecting it.'
+    }
+    if (isIssue && !form.destinationAccountId) {
+      nextErrors.destinationAccount = 'Destination Account is required for Issue lines.'
+    }
+    if (isTransfer && !form.destinationSubinventory) {
+      nextErrors.destinationSubinventory = 'Destination Subinventory is required for Transfer lines.'
+    }
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
@@ -106,12 +147,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
             <div className="form-field">
               <label className="form-label">Item Description</label>
-              <input
-                type="text"
-                className="form-input"
-                value={form.itemDescription || ''}
-                onChange={(e) => set('itemDescription', e.target.value)}
-              />
+              <input type="text" className="form-input" value={form.itemDescription || ''} disabled readOnly />
             </div>
 
             <div className="form-field">
@@ -156,12 +192,13 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
             <div className="form-field">
               <label className="form-label">Transaction Type</label>
-              <ReferenceSelect
-                options={transactionTypes.data}
-                value={form.transactionType}
-                onChange={(v) => set('transactionType', v)}
-                loading={transactionTypes.loading}
-                placeholder="Select transaction type..."
+              <input
+                type="text"
+                className="form-input"
+                value={form.transactionType || (form.itemNumber ? 'Not determined' : '')}
+                disabled
+                readOnly
+                title="Determined automatically by Oracle Fusion from the selected item and organization."
               />
             </div>
           </div>
@@ -169,64 +206,68 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
           <div className="section-divider">Source &amp; Destination</div>
           <div className="form-grid">
             <div className="form-field">
-              <label className="form-label">Source Subinventory</label>
+              <label className="form-label">
+                Source Subinventory<span className="form-label__required">*</span>
+              </label>
               <ReferenceSelect
-                options={sourceSubinventories.data}
+                options={sourceSubinventoryOptions}
                 value={form.sourceSubinventory}
                 onChange={(v) => set('sourceSubinventory', v)}
-                loading={sourceSubinventories.loading}
+                loading={subinventories.loading}
                 disabled={!organizationCode}
+                hasError={Boolean(errors.sourceSubinventory)}
                 placeholder="Select subinventory..."
               />
-            </div>
-            <div className="form-field">
-              <label className="form-label">Source Locator</label>
-              <ReferenceSelect
-                options={sourceLocators.data}
-                valueKey="code"
-                labelKey="code"
-                value={form.sourceLocator}
-                onChange={(v) => set('sourceLocator', v)}
-                loading={sourceLocators.loading}
-                disabled={!form.sourceSubinventory}
-                placeholder="Select locator..."
-              />
+              {errors.sourceSubinventory ? <div className="form-error">{errors.sourceSubinventory}</div> : null}
             </div>
 
-            <div className="form-field">
-              <label className="form-label">Destination Subinventory</label>
-              <ReferenceSelect
-                options={sourceSubinventories.data}
-                value={form.destinationSubinventory}
-                onChange={(v) => set('destinationSubinventory', v)}
-                loading={sourceSubinventories.loading}
-                disabled={!organizationCode}
-                placeholder="Select subinventory..."
-              />
-            </div>
-            <div className="form-field">
-              <label className="form-label">Destination Locator</label>
-              <ReferenceSelect
-                options={destinationLocators.data}
-                valueKey="code"
-                labelKey="code"
-                value={form.destinationLocator}
-                onChange={(v) => set('destinationLocator', v)}
-                loading={destinationLocators.loading}
-                disabled={!form.destinationSubinventory}
-                placeholder="Select locator..."
-              />
-            </div>
-
-            <div className="form-field">
-              <label className="form-label">Destination Account</label>
-              <input
-                type="text"
-                className="form-input"
-                value={form.destinationAccount || ''}
-                onChange={(e) => set('destinationAccount', e.target.value)}
-              />
-            </div>
+            {isTransfer ? (
+              <div className="form-field">
+                <label className="form-label">
+                  Destination Subinventory<span className="form-label__required">*</span>
+                </label>
+                <ReferenceSelect
+                  options={subinventories.data}
+                  value={form.destinationSubinventory}
+                  onChange={(v) => set('destinationSubinventory', v)}
+                  loading={subinventories.loading}
+                  disabled={!organizationCode}
+                  hasError={Boolean(errors.destinationSubinventory)}
+                  placeholder="Select subinventory..."
+                />
+                {errors.destinationSubinventory ? (
+                  <div className="form-error">{errors.destinationSubinventory}</div>
+                ) : null}
+              </div>
+            ) : isIssue ? (
+              <div className="form-field">
+                <label className="form-label">
+                  Destination Account<span className="form-label__required">*</span>
+                </label>
+                <LookupCombobox
+                  displayLabel={form.destinationAccountLabel}
+                  onSearch={searchDestinationAccounts}
+                  onSelect={handleDestinationAccountSelect}
+                  renderOption={(a) => (
+                    <>
+                      <span className="combobox__option-primary">{a.combinationCode}</span>
+                      {a.description && a.description !== a.combinationCode ? (
+                        <span className="combobox__option-secondary">{a.description}</span>
+                      ) : null}
+                    </>
+                  )}
+                  getOptionKey={(a) => a.id}
+                  placeholder="Search destination account..."
+                  hasError={Boolean(errors.destinationAccount)}
+                />
+                {errors.destinationAccount ? <div className="form-error">{errors.destinationAccount}</div> : null}
+              </div>
+            ) : (
+              <div className="form-field">
+                <label className="form-label">Destination</label>
+                <div className="form-hint">Select an item to determine whether a destination account or subinventory is needed.</div>
+              </div>
+            )}
           </div>
 
           <div className="section-divider">Additional Details</div>

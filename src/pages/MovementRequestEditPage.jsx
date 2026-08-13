@@ -13,14 +13,12 @@ import { toDateInputValue } from '../utils/formatters.js'
 function toHeaderFormState(mr) {
   return {
     inventoryOrganization: mr.inventoryOrganization,
-    movementRequestType: mr.movementRequestType || 'Requisition',
-    transactionType: mr.transactionType,
     requiredDate: toDateInputValue(mr.requiredDate),
     description: mr.description || '',
-    sourceSubinventory: mr.sourceSubinventory,
-    destinationSubinventory: mr.destinationSubinventory,
-    destinationAccount: mr.destinationAccount || '',
     costCenter: mr.costCenter,
+    // The header response only carries the cost center code, not its name — show the code until
+    // the user searches again (the combobox will surface the full "code — name" label at that point).
+    costCenterLabel: mr.costCenter || '',
   }
 }
 
@@ -68,6 +66,15 @@ export function MovementRequestEditPage() {
     )
   }
 
+  function handleHeaderChange(nextHeader) {
+    // Every line field (item, source/destination subinventory or account) is organization-scoped,
+    // so a changed organization invalidates all existing lines rather than leaving stale values.
+    if (nextHeader.inventoryOrganization !== header.inventoryOrganization) {
+      setLines([])
+    }
+    setHeader(nextHeader)
+  }
+
   function openAddLine() {
     setEditingLineIndex(null)
     setDrawerOpen(true)
@@ -98,6 +105,10 @@ export function MovementRequestEditPage() {
     const headerErrors = validateHeader(header)
     setErrors(headerErrors)
     if (Object.keys(headerErrors).length > 0) return
+    if (lines.length === 0) {
+      setSaveError({ message: 'Add at least one line before saving.' })
+      return
+    }
 
     setSaving(true)
     setSaveError(null)
@@ -130,7 +141,7 @@ export function MovementRequestEditPage() {
           <h2 className="card__title">Header</h2>
         </div>
         <div className="card__body">
-          <MovementRequestHeaderForm header={header} onChange={setHeader} errors={errors} />
+          <MovementRequestHeaderForm header={header} onChange={handleHeaderChange} errors={errors} />
         </div>
       </div>
 

@@ -9,7 +9,7 @@ import { formatDate, formatDateTime } from '../utils/formatters.js'
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'READY_TO_SUBMIT', label: 'Ready to Submit' },
+  { value: 'SUBMITTED', label: 'Submitted' },
 ]
 
 export function MovementRequestListPage() {
@@ -97,7 +97,6 @@ export function MovementRequestListPage() {
                     <th>Draft #</th>
                     <th>Oracle #</th>
                     <th>Organization</th>
-                    <th>Transaction Type</th>
                     <th>Required Date</th>
                     <th>Description</th>
                     <th>Local Status</th>
@@ -112,7 +111,6 @@ export function MovementRequestListPage() {
                       <td>{mr.internalDraftNumber}</td>
                       <td>{mr.oracleRequestNumber || <span className="text-faint">—</span>}</td>
                       <td>{mr.inventoryOrganization}</td>
-                      <td>{mr.transactionType}</td>
                       <td>{formatDate(mr.requiredDate) || '—'}</td>
                       <td>{mr.description || <span className="text-faint">—</span>}</td>
                       <td><LocalStatusBadge status={mr.localStatus} /></td>

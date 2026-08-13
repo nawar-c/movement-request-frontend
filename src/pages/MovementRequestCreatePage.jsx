@@ -10,14 +10,10 @@ import { validateHeader } from '../utils/validation.js'
 
 const EMPTY_HEADER = {
   inventoryOrganization: null,
-  movementRequestType: 'Requisition',
-  transactionType: null,
   requiredDate: '',
   description: '',
-  sourceSubinventory: null,
-  destinationSubinventory: null,
-  destinationAccount: '',
   costCenter: null,
+  costCenterLabel: '',
 }
 
 export function MovementRequestCreatePage() {
@@ -29,6 +25,15 @@ export function MovementRequestCreatePage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
+
+  function handleHeaderChange(nextHeader) {
+    // Every line field (item, source/destination subinventory or account) is organization-scoped,
+    // so a changed organization invalidates all existing lines rather than leaving stale values.
+    if (nextHeader.inventoryOrganization !== header.inventoryOrganization) {
+      setLines([])
+    }
+    setHeader(nextHeader)
+  }
 
   function openAddLine() {
     setEditingLineIndex(null)
@@ -60,6 +65,10 @@ export function MovementRequestCreatePage() {
     const headerErrors = validateHeader(header)
     setErrors(headerErrors)
     if (Object.keys(headerErrors).length > 0) return
+    if (lines.length === 0) {
+      setSaveError({ message: 'Add at least one line before saving.' })
+      return
+    }
 
     setSaving(true)
     setSaveError(null)
@@ -92,7 +101,7 @@ export function MovementRequestCreatePage() {
           <h2 className="card__title">Header</h2>
         </div>
         <div className="card__body">
-          <MovementRequestHeaderForm header={header} onChange={setHeader} errors={errors} />
+          <MovementRequestHeaderForm header={header} onChange={handleHeaderChange} errors={errors} />
         </div>
       </div>
 

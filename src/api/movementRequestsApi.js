@@ -22,6 +22,9 @@ function normalizeMovementRequest(mr) {
   }
 }
 
+// Transaction type is derived and owned entirely by the backend (per item chargeable flag +
+// organization). The line schema rejects transactionType/transactionTypeId as unrecognized keys
+// on create/update, so they must never be sent — only read back from server responses for display.
 function serializeLineForApi(line) {
   const quantity = toNumberOrNull(line.requestedQuantity)
   const secondaryQuantity = toNumberOrNull(line.secondaryRequestedQuantity)
@@ -32,12 +35,10 @@ function serializeLineForApi(line) {
     requestedQuantity: quantity ?? undefined,
     uom: line.uom || undefined,
     requiredDate: line.requiredDate || undefined,
-    transactionType: line.transactionType || undefined,
     sourceSubinventory: line.sourceSubinventory || undefined,
-    sourceLocator: line.sourceLocator || undefined,
     destinationSubinventory: line.destinationSubinventory || undefined,
-    destinationLocator: line.destinationLocator || undefined,
     destinationAccount: line.destinationAccount || undefined,
+    destinationAccountId: line.destinationAccountId || undefined,
     requester: line.requester || undefined,
     reason: line.reason || undefined,
     reference: line.reference || undefined,
@@ -49,16 +50,16 @@ function serializeLineForApi(line) {
   }
 }
 
+// Transaction Type, Source Subinventory, Destination Subinventory, and Destination Account are
+// now line-level concepts (a single request can mix Issue and Transfer lines) and are no longer
+// part of the header contract. Movement Request Type (the Oracle header concept, e.g.
+// "Requisition") is not user-selectable — the backend defaults it on its own when omitted, so it
+// is intentionally never sent here.
 function serializeHeaderForApi(header) {
   return {
     inventoryOrganization: header.inventoryOrganization || undefined,
-    movementRequestType: header.movementRequestType || undefined,
-    transactionType: header.transactionType || undefined,
     requiredDate: header.requiredDate || undefined,
     description: header.description || undefined,
-    sourceSubinventory: header.sourceSubinventory || undefined,
-    destinationSubinventory: header.destinationSubinventory || undefined,
-    destinationAccount: header.destinationAccount || undefined,
     costCenter: header.costCenter || undefined,
   }
 }

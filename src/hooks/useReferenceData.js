@@ -57,16 +57,8 @@ export function useUoms() {
   return useCachedFetch('uoms', () => referenceApi.getUoms(), [])
 }
 
-export function useTransactionTypes() {
-  return useCachedFetch('transaction-types', () => referenceApi.getTransactionTypes(), [])
-}
-
 export function useReasons() {
   return useCachedFetch('reasons', () => referenceApi.getReasons(), [])
-}
-
-export function useCostCenters() {
-  return useCachedFetch('cost-centers', () => referenceApi.getCostCenters(), [])
 }
 
 export function useSubinventories(organizationCode) {
@@ -76,15 +68,5 @@ export function useSubinventories(organizationCode) {
     () => referenceApi.getSubinventories(organizationCode),
     [organizationCode],
     Boolean(organizationCode),
-  )
-}
-
-export function useLocators(organizationCode, subinventoryCode) {
-  const key = subinventoryCode ? `locators:${organizationCode || ''}:${subinventoryCode}` : null
-  return useCachedFetch(
-    key,
-    () => referenceApi.getLocators(organizationCode, subinventoryCode),
-    [organizationCode, subinventoryCode],
-    Boolean(subinventoryCode),
   )
 }

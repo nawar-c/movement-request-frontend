@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { DetailField } from '../components/common/DetailField.jsx'
@@ -18,6 +18,15 @@ export function MovementRequestViewPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
+  const requestKind = useMemo(() => {
+    if (!mr) return null
+    const types = new Set(mr.lines.map((l) => l.transactionType).filter(Boolean))
+    if (types.size > 1) return 'Mixed'
+    if (types.has('Movement Request Issue')) return 'Issue'
+    if (types.has('Movement Request Transfer')) return 'Transfer'
+    return null
+  }, [mr])
+
   if (loading) return <LoadingState label="Loading movement request..." />
   if (error) return <ErrorState message={error.message} />
   if (!mr) return null
@@ -28,6 +37,10 @@ export function MovementRequestViewPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      // TODO(security/approval-routing): once user roles exist, a Nurse-created request should
+      // land in a "Pending Approval" state requiring explicit approval, while a non-Nurse creator's
+      // request should be auto-approved. Not implemented yet — every submission currently follows
+      // whatever status Oracle Fusion (mock) returns, with no role-based branching in the frontend.
       await movementRequestsApi.submit(id)
       await refresh()
       setConfirmOpen(false)
@@ -55,7 +68,7 @@ export function MovementRequestViewPage() {
             ) : null}
             {isDraft ? (
               <button type="button" className="btn btn-primary" onClick={() => setConfirmOpen(true)}>
-                Ready to Submit
+                Submit to Oracle Fusion
               </button>
             ) : null}
           </>
@@ -69,6 +82,7 @@ export function MovementRequestViewPage() {
         <div className="card__header">
           <h2 className="card__title">Header</h2>
           <div style={{ display: 'flex', gap: 8 }}>
+            {requestKind === 'Mixed' ? <span className="status-badge status-badge--muted">Mixed Request</span> : null}
             <LocalStatusBadge status={mr.localStatus} />
             <OracleStatusBadge status={mr.oracleStatus} />
           </div>
@@ -77,11 +91,7 @@ export function MovementRequestViewPage() {
           <div className="detail-grid">
             <DetailField label="Inventory Organization" value={mr.inventoryOrganization} />
             <DetailField label="Movement Request Type" value={mr.movementRequestType} />
-            <DetailField label="Transaction Type" value={mr.transactionType} />
             <DetailField label="Required Date" value={formatDate(mr.requiredDate)} />
-            <DetailField label="Source Subinventory" value={mr.sourceSubinventory} />
-            <DetailField label="Destination Subinventory" value={mr.destinationSubinventory} />
-            <DetailField label="Destination Account" value={mr.destinationAccount} />
             <DetailField label="Cost Center" value={mr.costCenter} />
             <DetailField label="Oracle Request Number" value={mr.oracleRequestNumber} />
             <DetailField label="Oracle Header ID" value={mr.oracleHeaderId} />
@@ -96,9 +106,9 @@ export function MovementRequestViewPage() {
 
       {confirmOpen ? (
         <ConfirmDialog
-          title="Mark as Ready to Submit?"
-          message="This marks the request as Ready to Submit. It is not yet submitted to Oracle Fusion. You will not be able to edit it after this step."
-          confirmLabel="Ready to Submit"
+          title="Submit to Oracle Fusion?"
+          message="This will submit the request to Oracle Fusion. Depending on approval routing, it may move directly to an approved state or require approval. You will not be able to edit it after this step."
+          confirmLabel="Submit"
           busy={submitting}
           onConfirm={handleConfirmSubmit}
           onCancel={() => setConfirmOpen(false)}

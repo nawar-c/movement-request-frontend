@@ -9,14 +9,17 @@ export const referenceApi = {
   getSubinventories: (organizationCode) =>
     apiClient.get('/api/reference/subinventories', { organizationCode }),
 
-  getLocators: (organizationCode, subinventoryCode) =>
-    apiClient.get('/api/reference/locators', { organizationCode, subinventoryCode }),
-
   getUoms: () => apiClient.get('/api/reference/uoms'),
-
-  getTransactionTypes: () => apiClient.get('/api/reference/transaction-types'),
 
   getReasons: () => apiClient.get('/api/reference/reasons'),
 
-  getCostCenters: () => apiClient.get('/api/reference/cost-centers'),
+  searchCostCenters: async (search) => {
+    const data = await apiClient.get('/api/reference/cost-centers', { search })
+    return data.items
+  },
+
+  // Destination accounts are not organization-scoped (the endpoint rejects organizationCode) and
+  // the full set (~7,771 rows) is searched and paginated server-side — never fetch it all at once.
+  searchDestinationAccounts: (search, { limit = 25, offset = 0 } = {}) =>
+    apiClient.get('/api/reference/destination-accounts', { search, limit, offset }),
 }

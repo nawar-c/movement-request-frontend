@@ -25,6 +25,7 @@ export function useDebouncedItemSearch(organizationCode, term) {
     setError(null)
 
     const timeout = setTimeout(() => {
+      // The backend owns case normalization for description search.
       referenceApi
         .searchItems(organizationCode, trimmed)
         .then((data) => {

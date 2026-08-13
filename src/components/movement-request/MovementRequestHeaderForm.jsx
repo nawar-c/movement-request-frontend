@@ -1,21 +1,24 @@
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
-import {
-  useOrganizations,
-  useTransactionTypes,
-  useSubinventories,
-  useCostCenters,
-} from '../../hooks/useReferenceData.js'
-
-const MOVEMENT_REQUEST_TYPES = [{ code: 'Requisition', name: 'Requisition' }]
+import { LookupCombobox } from '../common/LookupCombobox.jsx'
+import { referenceApi } from '../../api/referenceApi.js'
+import { useOrganizations } from '../../hooks/useReferenceData.js'
 
 export function MovementRequestHeaderForm({ header, onChange, errors = {}, disabled }) {
+  // TODO(security): once user-based organization restrictions ship, this should consume an
+  // already-filtered "allowed organizations" list from the backend instead of the full set —
+  // no client-side filtering logic should be added here to simulate that in the meantime.
   const organizations = useOrganizations()
-  const transactionTypes = useTransactionTypes()
-  const subinventories = useSubinventories(header.inventoryOrganization)
-  const costCenters = useCostCenters()
 
   function set(field, value) {
     onChange({ ...header, [field]: value })
+  }
+
+  function handleCostCenterSelect(costCenter) {
+    onChange({
+      ...header,
+      costCenter: costCenter ? costCenter.code : null,
+      costCenterLabel: costCenter ? `${costCenter.code} — ${costCenter.name}` : '',
+    })
   }
 
   return (
@@ -39,37 +42,6 @@ export function MovementRequestHeaderForm({ header, onChange, errors = {}, disab
       </div>
 
       <div className="form-field">
-        <label className="form-label">Movement Request Type</label>
-        <ReferenceSelect
-          options={MOVEMENT_REQUEST_TYPES}
-          valueKey="code"
-          labelKey="name"
-          value={header.movementRequestType || 'Requisition'}
-          onChange={(value) => set('movementRequestType', value)}
-          disabled={disabled}
-          placeholder="Select type..."
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">
-          Transaction Type<span className="form-label__required">*</span>
-        </label>
-        <ReferenceSelect
-          options={transactionTypes.data}
-          valueKey="code"
-          labelKey="name"
-          value={header.transactionType}
-          onChange={(value) => set('transactionType', value)}
-          loading={transactionTypes.loading}
-          disabled={disabled}
-          hasError={Boolean(errors.transactionType)}
-          placeholder="Select transaction type..."
-        />
-        {errors.transactionType ? <div className="form-error">{errors.transactionType}</div> : null}
-      </div>
-
-      <div className="form-field">
         <label className="form-label">
           Required Date<span className="form-label__required">*</span>
         </label>
@@ -84,56 +56,25 @@ export function MovementRequestHeaderForm({ header, onChange, errors = {}, disab
       </div>
 
       <div className="form-field">
-        <label className="form-label">Source Subinventory</label>
-        <ReferenceSelect
-          options={subinventories.data}
-          valueKey="code"
-          labelKey="name"
-          value={header.sourceSubinventory}
-          onChange={(value) => set('sourceSubinventory', value)}
-          loading={subinventories.loading}
-          disabled={disabled || !header.inventoryOrganization}
-          placeholder="Select subinventory..."
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">Destination Subinventory</label>
-        <ReferenceSelect
-          options={subinventories.data}
-          valueKey="code"
-          labelKey="name"
-          value={header.destinationSubinventory}
-          onChange={(value) => set('destinationSubinventory', value)}
-          loading={subinventories.loading}
-          disabled={disabled || !header.inventoryOrganization}
-          placeholder="Select subinventory..."
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">Destination Account</label>
-        <input
-          type="text"
-          className="form-input"
-          value={header.destinationAccount || ''}
+        <label className="form-label">
+          Cost Center<span className="form-label__required">*</span>
+        </label>
+        <LookupCombobox
+          displayLabel={header.costCenterLabel}
+          onSearch={async (term) => ({ items: await referenceApi.searchCostCenters(term), hasMore: false })}
+          onSelect={handleCostCenterSelect}
+          renderOption={(cc) => (
+            <>
+              <span className="combobox__option-primary">{cc.code}</span>
+              <span className="combobox__option-secondary">{cc.name}</span>
+            </>
+          )}
+          getOptionKey={(cc) => cc.code}
+          placeholder="Search cost center by code or name..."
           disabled={disabled}
-          onChange={(e) => set('destinationAccount', e.target.value)}
+          hasError={Boolean(errors.costCenter)}
         />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">Cost Center</label>
-        <ReferenceSelect
-          options={costCenters.data}
-          valueKey="code"
-          labelKey="name"
-          value={header.costCenter}
-          onChange={(value) => set('costCenter', value)}
-          loading={costCenters.loading}
-          disabled={disabled}
-          placeholder="Select cost center..."
-        />
+        {errors.costCenter ? <div className="form-error">{errors.costCenter}</div> : null}
       </div>
 
       <div className="form-field form-field--span-3">
