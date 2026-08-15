@@ -99,7 +99,7 @@ export function MovementRequestListPage() {
                     <th>Organization</th>
                     <th>Required Date</th>
                     <th>Description</th>
-                    <th>Local Status</th>
+                    <th>Application Status</th>
                     <th>Oracle Status</th>
                     <th>Created</th>
                     <th></th>

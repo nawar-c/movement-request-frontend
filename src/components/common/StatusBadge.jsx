@@ -1,6 +1,9 @@
+// Application Status — our own local workflow state. Distinct from, and never merged with,
+// Oracle's workflow status below.
 const LOCAL_STATUS_STYLES = {
   DRAFT: { className: 'status-badge--draft', label: 'Draft' },
   SUBMITTED: { className: 'status-badge--ready', label: 'Submitted' },
+  SUBMIT_FAILED: { className: 'status-badge--danger', label: 'Submit Failed' },
 }
 
 export function LocalStatusBadge({ status }) {
@@ -8,11 +11,24 @@ export function LocalStatusBadge({ status }) {
   return <span className={`status-badge ${style.className}`}>{style.label}</span>
 }
 
+// Oracle Workflow Status — the confirmed values (Incomplete/Pending approval/Approved/Rejected/
+// Closed/Canceled) get distinct styling; any other value Oracle returns (including future ones we
+// don't know about yet) safely falls back to the neutral "pending" style with its raw label.
+const ORACLE_STATUS_STYLES = {
+  Incomplete: { className: 'status-badge--muted', label: 'Incomplete' },
+  'Pending approval': { className: 'status-badge--pending', label: 'Pending Approval' },
+  Approved: { className: 'status-badge--ready', label: 'Approved' },
+  Rejected: { className: 'status-badge--danger', label: 'Rejected' },
+  Closed: { className: 'status-badge--muted', label: 'Closed' },
+  Canceled: { className: 'status-badge--danger', label: 'Canceled' },
+}
+
 export function OracleStatusBadge({ status }) {
   if (!status) {
     return <span className="status-badge status-badge--muted">Not Submitted</span>
   }
-  return <span className="status-badge status-badge--pending">{status}</span>
+  const style = ORACLE_STATUS_STYLES[status] || { className: 'status-badge--pending', label: status }
+  return <span className={`status-badge ${style.className}`}>{style.label}</span>
 }
 
 const LINE_TRANSACTION_TYPE_STYLES = {

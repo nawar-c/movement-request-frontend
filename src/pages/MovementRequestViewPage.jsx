@@ -10,6 +10,16 @@ import { useMovementRequest } from '../hooks/useMovementRequest.js'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { formatDate, formatDateTime } from '../utils/formatters.js'
 
+function friendlyRefreshStatusError(err) {
+  if (err.code === 'NO_ORACLE_HEADER') {
+    return 'This request has not been submitted to Oracle Fusion yet, so there is no status to refresh.'
+  }
+  if (err.code === 'ORACLE_ERROR' || err.status === 502) {
+    return 'Unable to refresh Oracle status. The last known status has been preserved.'
+  }
+  return err.message
+}
+
 export function MovementRequestViewPage() {
   const { id } = useParams()
   const location = useLocation()
@@ -17,6 +27,8 @@ export function MovementRequestViewPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [refreshingStatus, setRefreshingStatus] = useState(false)
+  const [refreshStatusError, setRefreshStatusError] = useState(null)
 
   const requestKind = useMemo(() => {
     if (!mr) return null
@@ -48,6 +60,22 @@ export function MovementRequestViewPage() {
       setSubmitError(err)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleRefreshStatus() {
+    setRefreshingStatus(true)
+    setRefreshStatusError(null)
+    try {
+      await movementRequestsApi.refreshOracleStatus(id)
+      // Re-fetches the record in place (no full browser reload) so the new status shows immediately.
+      await refresh()
+    } catch (err) {
+      // Deliberately do not touch `mr` here — the backend preserves the last known Oracle status on
+      // a failed refresh, and the frontend must not erase what's currently displayed either.
+      setRefreshStatusError(err)
+    } finally {
+      setRefreshingStatus(false)
     }
   }
 
@@ -84,7 +112,6 @@ export function MovementRequestViewPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             {requestKind === 'Mixed' ? <span className="status-badge status-badge--muted">Mixed Request</span> : null}
             <LocalStatusBadge status={mr.localStatus} />
-            <OracleStatusBadge status={mr.oracleStatus} />
           </div>
         </div>
         <div className="card__body">
@@ -93,14 +120,34 @@ export function MovementRequestViewPage() {
             <DetailField label="Movement Request Type" value={mr.movementRequestType} />
             <DetailField label="Required Date" value={formatDate(mr.requiredDate)} />
             <DetailField label="Cost Center" value={mr.costCenter} />
-            <DetailField label="Oracle Request Number" value={mr.oracleRequestNumber} />
-            <DetailField label="Oracle Header ID" value={mr.oracleHeaderId} />
             <DetailField label="Created" value={formatDateTime(mr.createdAt)} />
             <DetailField label="Last Updated" value={formatDateTime(mr.updatedAt)} />
             <DetailField label="Description" value={mr.description} span={3} />
           </div>
         </div>
       </div>
+
+      {mr.oracleHeaderId ? (
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title">Oracle Fusion</h2>
+            <OracleStatusBadge status={mr.oracleStatus} />
+          </div>
+          <div className="card__body">
+            <InlineError message={refreshStatusError ? friendlyRefreshStatusError(refreshStatusError) : null} />
+            <div className="detail-grid">
+              <DetailField label="Oracle Request Number" value={mr.oracleRequestNumber} />
+              <DetailField label="Oracle Header ID" value={mr.oracleHeaderId} />
+              <DetailField label="Oracle Status Code" value={mr.oracleStatusCode != null ? String(mr.oracleStatusCode) : null} />
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <button type="button" className="btn btn-sm" onClick={handleRefreshStatus} disabled={refreshingStatus}>
+                {refreshingStatus ? 'Refreshing...' : 'Refresh Oracle Status'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <MovementRequestLinesTable lines={mr.lines} disabled />
 

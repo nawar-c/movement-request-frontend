@@ -97,4 +97,11 @@ export const movementRequestsApi = {
     const data = await apiClient.post(`/api/movement-requests/${id}/submit`)
     return normalizeMovementRequest(data)
   },
+
+  // GET-only against Oracle: refreshes oracleStatus/oracleStatusCode/oracleResponse without
+  // touching localStatus, oracleHeaderId, or oracleRequestNumber.
+  refreshOracleStatus: async (id) => {
+    const data = await apiClient.post(`/api/movement-requests/${id}/refresh-status`)
+    return normalizeMovementRequest(data)
+  },
 }
