@@ -663,6 +663,21 @@ a {
   font-style: italic;
 }
 
+/* Auth pages (login / forgot / reset / change password) */
+.auth-page {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  margin-bottom: 0;
+}
+
 .spinner {
   width: 16px;
   height: 16px;
