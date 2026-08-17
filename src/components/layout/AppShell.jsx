@@ -17,6 +17,9 @@ export function AppShell() {
               <Link to="/admin/users" className="app-topbar__nav-link">
                 Users
               </Link>
+              <Link to="/admin/approval-rules" className="app-topbar__nav-link">
+                Approval Rules
+              </Link>
               <Link to="/admin/master-data-sync" className="app-topbar__nav-link">
                 Admin
               </Link>
@@ -27,9 +30,9 @@ export function AppShell() {
           <span className="app-topbar__env" title="Oracle integration mode">
             Oracle: Mock
           </span>
-          {user?.email ? (
+          {user?.username ? (
             <span className="text-muted" style={{ fontSize: 12 }}>
-              {user.email}
+              {user.username}
             </span>
           ) : null}
           <button type="button" className="btn btn-sm" onClick={logout}>

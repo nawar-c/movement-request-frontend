@@ -47,7 +47,7 @@ export function ChangePasswordPage() {
         </div>
         <div className="card__body">
           <InlineNotice>
-            {user?.email ? `Signed in as ${user.email}. ` : ''}
+            {user?.username ? `Signed in as ${user.username}. ` : ''}
             You must set a new password before continuing.
           </InlineNotice>
           <InlineError message={error} />

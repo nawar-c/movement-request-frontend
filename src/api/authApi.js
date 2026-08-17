@@ -4,7 +4,8 @@ import { apiClient } from './client.js'
 // credentials, unknown/expired reset token) is a normal validation outcome, not a session
 // event, so these skip the global 401/403 auth-error handling in the API client.
 export const authApi = {
-  login: (email, password) => apiClient.post('/api/auth/login', { email, password }, { skipAuthHandling: true }),
+  login: (username, password) =>
+    apiClient.post('/api/auth/login', { username, password }, { skipAuthHandling: true }),
 
   me: () => apiClient.get('/api/auth/me'),
 

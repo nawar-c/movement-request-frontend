@@ -10,6 +10,13 @@ import { useMovementRequest } from '../hooks/useMovementRequest.js'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { formatDate, formatDateTime } from '../utils/formatters.js'
 
+function friendlySubmitError(err) {
+  if (err.code === 'NO_APPROVAL_SUBMISSION_NOT_CONFIGURED') {
+    return 'This destination is configured as not requiring approval, but direct Oracle submission for this configuration is not enabled yet.'
+  }
+  return err.message
+}
+
 function friendlyRefreshStatusError(err) {
   if (err.code === 'NO_ORACLE_HEADER') {
     return 'This request has not been submitted to Oracle Fusion yet, so there is no status to refresh.'
@@ -104,7 +111,7 @@ export function MovementRequestViewPage() {
       />
 
       {location.state?.notice ? <InlineNotice>{location.state.notice}</InlineNotice> : null}
-      <InlineError message={submitError?.message} details={submitError?.details} />
+      <InlineError message={submitError ? friendlySubmitError(submitError) : null} details={submitError?.details} />
 
       <div className="card">
         <div className="card__header">

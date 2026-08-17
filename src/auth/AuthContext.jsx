@@ -52,8 +52,8 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function login(email, password) {
-    const { token: newToken, user: newUser } = await authApi.login(email, password)
+  async function login(username, password) {
+    const { token: newToken, user: newUser } = await authApi.login(username, password)
     persistToken(newToken)
     setTokenState(newToken)
     setUser(newUser)

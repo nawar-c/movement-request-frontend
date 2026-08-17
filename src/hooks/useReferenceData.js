@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { referenceApi } from '../api/referenceApi.js'
 
+const EMPTY_DESTINATIONS_BY_ORG = {}
+
 const cache = new Map()
 
 function useCachedFetch(cacheKey, fetcher, deps, enabled = true) {
@@ -69,4 +71,49 @@ export function useSubinventories(organizationCode) {
     [organizationCode],
     Boolean(organizationCode),
   )
+}
+
+// Transfer-line Destination Subinventory. Backend scopes results to the current user's assigned
+// destinations (unrestricted for ADMIN); this hook does no filtering of its own.
+export function useDestinationSubinventories(organizationCode) {
+  const key = organizationCode ? `destinationSubinventories:${organizationCode}` : null
+  return useCachedFetch(
+    key,
+    () => referenceApi.getDestinationSubinventories(organizationCode),
+    [organizationCode],
+    Boolean(organizationCode),
+  )
+}
+
+// Admin user-definition screen only: loads destination subinventories for several organizations
+// at once (one small request per org) so the assignment UI can group choices by organization.
+export function useDestinationSubinventoriesByOrganizations(organizationCodes) {
+  const key = organizationCodes.join(',')
+  const [state, setState] = useState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: true, error: null })
+
+  useEffect(() => {
+    if (organizationCodes.length === 0) {
+      setState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: false, error: null })
+      return
+    }
+    let cancelled = false
+    setState((prev) => ({ ...prev, loading: true, error: null }))
+    Promise.all(
+      organizationCodes.map((code) => referenceApi.getDestinationSubinventories(code).then((data) => [code, data])),
+    )
+      .then((entries) => {
+        if (cancelled) return
+        setState({ dataByOrg: Object.fromEntries(entries), loading: false, error: null })
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: false, error })
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return state
 }

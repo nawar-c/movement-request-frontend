@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ItemSearchCombobox } from '../common/ItemSearchCombobox.jsx'
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
 import { LookupCombobox } from '../common/LookupCombobox.jsx'
-import { useUoms, useSubinventories, useReasons } from '../../hooks/useReferenceData.js'
+import { useUoms, useSubinventories, useDestinationSubinventories, useReasons } from '../../hooks/useReferenceData.js'
 import { referenceApi } from '../../api/referenceApi.js'
 
 const ISSUE_TRANSACTION_TYPE_ID = 63
@@ -41,6 +41,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
   const uoms = useUoms()
   const subinventories = useSubinventories(organizationCode)
+  const destinationSubinventories = useDestinationSubinventories(organizationCode)
   const reasons = useReasons()
 
   const sourceSubinventoryOptions = subinventories.data.filter((s) => s.isSource)
@@ -227,14 +228,17 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
                   Destination Subinventory<span className="form-label__required">*</span>
                 </label>
                 <ReferenceSelect
-                  options={subinventories.data}
+                  options={destinationSubinventories.data}
                   value={form.destinationSubinventory}
                   onChange={(v) => set('destinationSubinventory', v)}
-                  loading={subinventories.loading}
+                  loading={destinationSubinventories.loading}
                   disabled={!organizationCode}
                   hasError={Boolean(errors.destinationSubinventory)}
                   placeholder="Select subinventory..."
                 />
+                {organizationCode && !destinationSubinventories.loading && destinationSubinventories.data.length === 0 ? (
+                  <div className="form-hint">No destination subinventories assigned for this organization.</div>
+                ) : null}
                 {errors.destinationSubinventory ? (
                   <div className="form-error">{errors.destinationSubinventory}</div>
                 ) : null}

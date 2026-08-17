@@ -7,7 +7,7 @@ export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -17,10 +17,10 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const user = await login(email, password)
+      const user = await login(username, password)
       navigate(user.mustChangePassword ? '/change-password' : '/movement-requests', { replace: true })
     } catch (err) {
-      setError(err.code === 'NETWORK_ERROR' ? err.message : 'Invalid email or password.')
+      setError(err.code === 'NETWORK_ERROR' ? err.message : 'Invalid username or password.')
     } finally {
       setSubmitting(false)
     }
@@ -37,11 +37,11 @@ export function LoginPage() {
           <InlineError message={error} />
           <form onSubmit={handleSubmit}>
             <div className="form-field">
-              <label className="form-label">Username / Email</label>
+              <label className="form-label">Username / Employee ID</label>
               <input
                 className="form-input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 autoFocus
               />

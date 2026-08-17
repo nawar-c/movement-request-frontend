@@ -12,6 +12,7 @@ import { MovementRequestEditPage } from './pages/MovementRequestEditPage.jsx'
 import { MovementRequestViewPage } from './pages/MovementRequestViewPage.jsx'
 import { AdminMasterDataSyncPage } from './pages/AdminMasterDataSyncPage.jsx'
 import { AdminUsersPage } from './pages/AdminUsersPage.jsx'
+import { AdminApprovalRulesPage } from './pages/AdminApprovalRulesPage.jsx'
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
             <Route element={<RequireAdmin />}>
               <Route path="/admin/master-data-sync" element={<AdminMasterDataSyncPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/approval-rules" element={<AdminApprovalRulesPage />} />
             </Route>
           </Route>
         </Route>
