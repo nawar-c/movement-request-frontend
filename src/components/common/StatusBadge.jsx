@@ -11,9 +11,10 @@ export function LocalStatusBadge({ status }) {
   return <span className={`status-badge ${style.className}`}>{style.label}</span>
 }
 
-// Oracle Workflow Status — the confirmed values (Incomplete/Pending approval/Approved/Rejected/
-// Closed/Canceled) get distinct styling; any other value Oracle returns (including future ones we
-// don't know about yet) safely falls back to the neutral "pending" style with its raw label.
+// Oracle Workflow Status — the 9 confirmed values (Incomplete/Pending approval/Approved/Rejected/
+// Closed/Canceled/Preapproved/Partially approved/Canceled by source) get distinct styling; any
+// other value Oracle returns (including future ones we don't know about yet) safely falls back to
+// the neutral "pending" style with its raw label.
 const ORACLE_STATUS_STYLES = {
   Incomplete: { className: 'status-badge--muted', label: 'Incomplete' },
   'Pending approval': { className: 'status-badge--pending', label: 'Pending Approval' },
@@ -21,6 +22,9 @@ const ORACLE_STATUS_STYLES = {
   Rejected: { className: 'status-badge--danger', label: 'Rejected' },
   Closed: { className: 'status-badge--muted', label: 'Closed' },
   Canceled: { className: 'status-badge--danger', label: 'Canceled' },
+  Preapproved: { className: 'status-badge--ready', label: 'Preapproved' },
+  'Partially approved': { className: 'status-badge--pending', label: 'Partially approved' },
+  'Canceled by source': { className: 'status-badge--danger', label: 'Canceled by source' },
 }
 
 export function OracleStatusBadge({ status }) {
