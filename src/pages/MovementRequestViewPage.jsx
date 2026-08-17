@@ -14,7 +14,21 @@ function friendlySubmitError(err) {
   if (err.code === 'NO_APPROVAL_SUBMISSION_NOT_CONFIGURED') {
     return 'This destination is configured as not requiring approval, but direct Oracle submission for this configuration is not enabled yet.'
   }
+  if (err.code === 'EMPLOYEE_NAME_NOT_SYNCED') {
+    return 'Your employee information has not been synchronized from Oracle. Please contact the administrator.'
+  }
+  if (err.code === 'INVALID_EMPLOYEE_ID_FOR_ORACLE') {
+    return 'Your Employee ID is not valid for Oracle submission. Please contact the administrator.'
+  }
   return err.message
+}
+
+// Business requester identity is the Movement Request creator's Employee ID + Employee Name —
+// never oracleRequesterId or the Oracle line RequesterId/RequesterName (technical DFF concepts).
+function requestedByDisplay(mr) {
+  if (!mr.createdByUsername && !mr.createdByEmployeeName) return 'Not available'
+  if (mr.createdByUsername && mr.createdByEmployeeName) return `${mr.createdByUsername} — ${mr.createdByEmployeeName}`
+  return mr.createdByUsername || mr.createdByEmployeeName
 }
 
 function friendlyRefreshStatusError(err) {
@@ -127,6 +141,7 @@ export function MovementRequestViewPage() {
             <DetailField label="Movement Request Type" value={mr.movementRequestType} />
             <DetailField label="Required Date" value={formatDate(mr.requiredDate)} />
             <DetailField label="Cost Center" value={mr.costCenter} />
+            <DetailField label="Requested By" value={requestedByDisplay(mr)} />
             <DetailField label="Created" value={formatDateTime(mr.createdAt)} />
             <DetailField label="Last Updated" value={formatDateTime(mr.updatedAt)} />
             <DetailField label="Description" value={mr.description} span={3} />

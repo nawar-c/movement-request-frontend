@@ -12,6 +12,30 @@ const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: 8, margin
 const modalFooterStyle = { padding: '20px 0 0', borderTop: 'none' }
 const destinationKey = (d) => `${d.organizationCode}|${d.subinventoryCode}`
 
+// Maps the backend's per-user sync `result` to admin-friendly wording — never surfaces raw
+// Oracle/technical error text. "unresolved" (no HCM match, e.g. functional accounts like `admin`)
+// is a neutral outcome, not an application error.
+function syncResultMessage(result) {
+  if (result === 'updated' || result === 'resolved') return 'Employee information synchronized successfully.'
+  if (result === 'unchanged') return 'Employee information is already up to date.'
+  if (result === 'unresolved') return 'No Oracle HCM employee was found for this Employee ID.'
+  return 'Unable to synchronize employee information.'
+}
+
+function EmployeeNameCell({ employeeName }) {
+  if (!employeeName) {
+    return <span className="text-faint">Not synchronized</span>
+  }
+  return (
+    <div>
+      <div>{employeeName}</div>
+      <div className="text-faint" style={{ fontSize: 11 }}>
+        Synced from Oracle HCM
+      </div>
+    </div>
+  )
+}
+
 export function AdminUsersPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,6 +45,13 @@ export function AdminUsersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState(null)
   const [resetUser, setResetUser] = useState(null)
+
+  const [syncingId, setSyncingId] = useState(null)
+  const [syncNotice, setSyncNotice] = useState(null)
+
+  const [bulkSyncing, setBulkSyncing] = useState(false)
+  const [bulkResult, setBulkResult] = useState(null)
+  const [bulkError, setBulkError] = useState(null)
 
   function load() {
     setLoading(true)
@@ -44,6 +75,35 @@ export function AdminUsersPage() {
     }
   }
 
+  async function handleSyncEmployee(u) {
+    setSyncNotice(null)
+    setSyncingId(u.id)
+    try {
+      const result = await adminUsersApi.syncEmployee(u.id)
+      setSyncNotice({ username: u.username, text: syncResultMessage(result?.result) })
+      await load()
+    } catch {
+      setSyncNotice({ username: u.username, text: syncResultMessage('error') })
+    } finally {
+      setSyncingId(null)
+    }
+  }
+
+  async function handleBulkSync() {
+    setBulkError(null)
+    setBulkResult(null)
+    setBulkSyncing(true)
+    try {
+      const result = await adminUsersApi.syncAllEmployeeNames()
+      setBulkResult(result)
+      await load()
+    } catch (err) {
+      setBulkError(err)
+    } finally {
+      setBulkSyncing(false)
+    }
+  }
+
   if (loading) return <LoadingState label="Loading users..." />
   if (loadError) return <ErrorState message={loadError.message} onRetry={load} />
 
@@ -53,13 +113,49 @@ export function AdminUsersPage() {
         title="Users"
         subtitle="Manage application users and access."
         actions={
-          <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
-            + New User
-          </button>
+          <>
+            <button type="button" className="btn" onClick={handleBulkSync} disabled={bulkSyncing}>
+              {bulkSyncing ? 'Syncing...' : 'Sync Employee Names'}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+              + New User
+            </button>
+          </>
         }
       />
 
       <InlineError message={rowError?.message} />
+      <InlineError message={bulkError?.message} />
+      {syncNotice ? (
+        <InlineNotice>
+          {syncNotice.username}: {syncNotice.text}
+        </InlineNotice>
+      ) : null}
+      {bulkResult ? (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card__body">
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Employee Sync Complete</div>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
+              <span>Scanned: {bulkResult.scanned}</span>
+              <span>Resolved: {bulkResult.resolved}</span>
+              <span>Updated: {bulkResult.updated}</span>
+              <span>Unchanged: {bulkResult.unchanged}</span>
+              <span>Unresolved: {bulkResult.unresolved}</span>
+              <span>Errors: {bulkResult.errors}</span>
+            </div>
+            {Array.isArray(bulkResult.details) && bulkResult.details.some((d) => d.result === 'unresolved') ? (
+              <div className="text-faint" style={{ fontSize: 12, marginTop: 10 }}>
+                Unresolved (no Oracle HCM match — expected for functional accounts such as{' '}
+                <code>admin</code>):{' '}
+                {bulkResult.details
+                  .filter((d) => d.result === 'unresolved')
+                  .map((d) => d.username)
+                  .join(', ')}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="card">
         <div className="card__body" style={{ padding: users.length === 0 ? undefined : 0 }}>
@@ -71,6 +167,7 @@ export function AdminUsersPage() {
                 <thead>
                   <tr>
                     <th>Username / Employee ID</th>
+                    <th>Employee Name</th>
                     <th>Email</th>
                     <th>Role</th>
                     <th>Is Nurse</th>
@@ -83,6 +180,7 @@ export function AdminUsersPage() {
                   {users.map((u) => (
                     <tr key={u.id}>
                       <td>{u.username}</td>
+                      <td><EmployeeNameCell employeeName={u.employeeName} /></td>
                       <td>{u.email}</td>
                       <td>{u.role}</td>
                       <td>{u.isNurse ? 'Yes' : 'No'}</td>
@@ -98,6 +196,14 @@ export function AdminUsersPage() {
                           </button>
                           <button type="button" className="btn btn-sm" onClick={() => setResetUser(u)}>
                             Reset Password
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => handleSyncEmployee(u)}
+                            disabled={syncingId === u.id}
+                          >
+                            {syncingId === u.id ? 'Syncing...' : 'Sync Employee'}
                           </button>
                         </div>
                       </td>
@@ -358,6 +464,13 @@ function EditUserModal({ user, onClose, onSaved }) {
             Username / Employee ID<span className="form-label__required">*</span>
           </label>
           <input className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+        </div>
+        <div className="form-field" style={{ marginTop: 14 }}>
+          <label className="form-label">Employee Name</label>
+          <div className="form-input" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+            {user.employeeName || 'Not synchronized'}
+          </div>
+          <div className="form-hint">Synced from Oracle HCM — read-only. Use Sync Employee to update.</div>
         </div>
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">

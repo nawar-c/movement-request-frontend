@@ -12,4 +12,10 @@ export const adminUsersApi = {
 
   resetPassword: (id, newPassword, confirmPassword) =>
     apiClient.post(`/api/admin/users/${id}/reset-password`, { newPassword, confirmPassword }),
+
+  // Employee Name is Oracle-synchronized master data — these only ever sync existing application
+  // users against Oracle HCM, never create/activate users or touch roles/passwords/assignments.
+  syncEmployee: (id) => apiClient.post(`/api/admin/users/${id}/sync-employee`),
+
+  syncAllEmployeeNames: () => apiClient.post('/api/admin/user-employee-sync'),
 }
