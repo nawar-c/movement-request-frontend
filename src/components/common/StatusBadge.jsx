@@ -35,6 +35,23 @@ export function OracleStatusBadge({ status }) {
   return <span className={`status-badge ${style.className}`}>{style.label}</span>
 }
 
+// Line Closure — an application-derived summary of how many lines Oracle has closed, distinct
+// from both Application Status and Oracle Header Status. Never merged with either.
+const LINE_CLOSURE_STYLES = {
+  ALL_LINES_CLOSED: { className: 'status-badge--ready', label: 'All Lines Closed' },
+  PARTIALLY_CLOSED: { className: 'status-badge--pending', label: 'Partially Closed' },
+  NOT_CLOSED: { className: 'status-badge--muted', label: 'Not Closed' },
+  NOT_AVAILABLE: { className: 'status-badge--muted', label: 'Not Available' },
+}
+
+export function LineClosureBadge({ status }) {
+  if (!status) {
+    return <span className="status-badge status-badge--muted">Not Available</span>
+  }
+  const style = LINE_CLOSURE_STYLES[status] || { className: 'status-badge--muted', label: status }
+  return <span className={`status-badge ${style.className}`}>{style.label}</span>
+}
+
 const LINE_TRANSACTION_TYPE_STYLES = {
   'Movement Request Issue': { className: 'status-badge--pending', label: 'Issue' },
   'Movement Request Transfer': { className: 'status-badge--ready', label: 'Transfer' },

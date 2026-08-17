@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { DetailField } from '../components/common/DetailField.jsx'
-import { LocalStatusBadge, OracleStatusBadge } from '../components/common/StatusBadge.jsx'
+import { LocalStatusBadge, OracleStatusBadge, LineClosureBadge } from '../components/common/StatusBadge.jsx'
 import { LoadingState, ErrorState, InlineError, InlineNotice } from '../components/common/States.jsx'
 import { MovementRequestLinesTable } from '../components/movement-request/MovementRequestLinesTable.jsx'
 import { ConfirmDialog } from '../components/common/Modal.jsx'
@@ -167,6 +167,22 @@ export function MovementRequestViewPage() {
                 {refreshingStatus ? 'Refreshing...' : 'Refresh Oracle Status'}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {mr.lineClosure ? (
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title">Line Closure</h2>
+            <LineClosureBadge status={mr.lineClosure.status} />
+          </div>
+          <div className="card__body">
+            {mr.lineClosure.status !== 'NOT_AVAILABLE' ? (
+              <div className="text-muted" style={{ fontSize: 13 }}>
+                {mr.lineClosure.closedLines} of {mr.lineClosure.totalLines} lines closed
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

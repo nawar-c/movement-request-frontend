@@ -1,5 +1,5 @@
 import { EmptyState } from '../common/States.jsx'
-import { LineTransactionTypeBadge } from '../common/StatusBadge.jsx'
+import { LineTransactionTypeBadge, OracleStatusBadge } from '../common/StatusBadge.jsx'
 
 function destinationLabel(line) {
   if (line.transactionTypeId === 64 || line.transactionType === 'Movement Request Transfer') {
@@ -38,6 +38,8 @@ export function MovementRequestLinesTable({ lines, onAdd, onEdit, onRemove, disa
                   <th>UOM</th>
                   <th>Source</th>
                   <th>Destination</th>
+                  {disabled ? <th>Oracle Line Status</th> : null}
+                  {disabled ? <th>Oracle Status Code</th> : null}
                   {!disabled ? <th></th> : null}
                 </tr>
               </thead>
@@ -54,6 +56,14 @@ export function MovementRequestLinesTable({ lines, onAdd, onEdit, onRemove, disa
                     <td>{line.uom || <span className="text-faint">—</span>}</td>
                     <td>{line.sourceSubinventory || <span className="text-faint">—</span>}</td>
                     <td>{destinationLabel(line) || <span className="text-faint">—</span>}</td>
+                    {disabled ? (
+                      <td>
+                        <OracleStatusBadge status={line.oracleStatus} />
+                      </td>
+                    ) : null}
+                    {disabled ? (
+                      <td>{line.oracleStatusCode != null ? String(line.oracleStatusCode) : <span className="text-faint">—</span>}</td>
+                    ) : null}
                     {!disabled ? (
                       <td>
                         <div className="row-actions">
