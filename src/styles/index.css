@@ -692,3 +692,355 @@ a {
     transform: rotate(360deg);
   }
 }
+
+/* ===================================================================== */
+/* Dashboard (Phase 1) — additive only, builds on existing tokens/classes */
+/* ===================================================================== */
+
+/* Date-range preset segmented control */
+.preset-group {
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.preset-btn {
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.preset-btn + .preset-btn {
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.preset-btn:hover:not(.preset-btn--active) {
+  background: var(--color-bg);
+}
+
+.preset-btn--active {
+  background: rgba(30, 94, 171, 0.1);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.filter-more {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+/* Active filter chips */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px 3px 10px;
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-text);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.filter-chip__remove {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+  opacity: 0.65;
+}
+
+.filter-chip__remove:hover {
+  opacity: 1;
+}
+
+.filter-clear {
+  font-size: 12px;
+}
+
+.filter-updating {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+
+/* Data freshness */
+/* Pulls the freshness line up close to the page subtitle so it reads as part of the header block
+   (title / subtitle / freshness) instead of a separate right-aligned element, while leaving normal
+   spacing before the filter bar that follows it. */
+.dashboard-header-freshness {
+  margin: -14px 0 18px;
+}
+
+.dashboard-freshness {
+  position: relative;
+  display: inline-flex;
+}
+
+.freshness-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.freshness-toggle:hover {
+  color: var(--color-text-muted);
+}
+
+.freshness-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 14px;
+  z-index: 40;
+  font-size: 12px;
+}
+
+.freshness-popover__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-faint);
+  margin-bottom: 8px;
+}
+
+.freshness-popover__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.freshness-popover__row:first-of-type {
+  border-top: none;
+}
+
+.freshness-popover__domain {
+  color: var(--color-text-muted);
+}
+
+.freshness-popover__time {
+  color: var(--color-text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Operational Health hero */
+.op-health {
+  padding: 26px 28px;
+}
+
+.op-health__body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 36px;
+  align-items: center;
+}
+
+.op-health__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+  margin-bottom: 8px;
+}
+
+.op-health__total {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.op-health__total-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.op-health__period {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  margin-top: 4px;
+}
+
+.op-health__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  border-left: 1px solid var(--color-border);
+  padding-left: 36px;
+}
+
+.op-health__stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.op-health__stat-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.op-health__stat-value.stat-warning { color: var(--color-warning-text); }
+.op-health__stat-value.stat-success { color: var(--color-success-text); }
+.op-health__stat-value.stat-danger { color: var(--color-danger); }
+.op-health__stat-value.stat-neutral { color: var(--color-neutral-text); }
+
+@media (max-width: 900px) {
+  .op-health__body {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .op-health__stats {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: 18px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .op-health__total {
+    font-size: 40px;
+  }
+  .op-health__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* KPI cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpi-card {
+  padding: 16px 18px;
+}
+
+.kpi-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.kpi-card__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kpi-card__title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.kpi-card__value {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 6px;
+  color: var(--color-text);
+}
+
+.kpi-card__desc {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.kpi-card--warning .kpi-card__icon { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.kpi-card--warning .kpi-card__value { color: var(--color-warning-text); }
+.kpi-card--success .kpi-card__icon { background: var(--color-success-bg); color: var(--color-success-text); }
+.kpi-card--success .kpi-card__value { color: var(--color-success-text); }
+.kpi-card--danger .kpi-card__icon { background: var(--color-danger-bg); color: var(--color-danger); }
+.kpi-card--danger .kpi-card__value { color: var(--color-danger); }
+.kpi-card--neutral .kpi-card__icon { background: var(--color-neutral-bg); color: var(--color-neutral-text); }
+
+/* Skeletons — solid muted blocks with a gentle opacity pulse (no gradients/shimmer) */
+.skeleton {
+  background: var(--color-neutral-bg);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+.skeleton-op-health {
+  height: 132px;
+}
+
+.skeleton-kpi {
+  height: 108px;
+}

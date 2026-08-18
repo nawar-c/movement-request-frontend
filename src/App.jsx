@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage.jsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.jsx'
 import { ChangePasswordPage } from './pages/ChangePasswordPage.jsx'
+import { DashboardPage } from './pages/DashboardPage.jsx'
 import { MovementRequestListPage } from './pages/MovementRequestListPage.jsx'
 import { MovementRequestCreatePage } from './pages/MovementRequestCreatePage.jsx'
 import { MovementRequestEditPage } from './pages/MovementRequestEditPage.jsx'
@@ -31,6 +32,7 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<Navigate to="/movement-requests" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/movement-requests" element={<MovementRequestListPage />} />
             <Route path="/movement-requests/new" element={<MovementRequestCreatePage />} />
             <Route path="/movement-requests/:id/edit" element={<MovementRequestEditPage />} />

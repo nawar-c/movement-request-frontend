@@ -65,6 +65,38 @@ export function LineTransactionTypeBadge({ transactionType }) {
   return <span className={`status-badge ${style.className}`}>{style.label}</span>
 }
 
+// Pure data exports (no rendering change to any badge above) — reused by the Dashboard filter bar
+// so filter option lists stay a single source of truth with the badges instead of being
+// re-hardcoded per screen.
+export const LOCAL_STATUS_OPTIONS = Object.entries(LOCAL_STATUS_STYLES).map(([value, s]) => ({
+  value,
+  label: s.label,
+}))
+
+export const LINE_CLOSURE_OPTIONS = Object.entries(LINE_CLOSURE_STYLES).map(([value, s]) => ({
+  value,
+  label: s.label,
+}))
+
+// Oracle's confirmed status codes (from Oracle Fusion, not invented here) paired with the exact
+// label OracleStatusBadge already renders for that value.
+const ORACLE_STATUS_CODES = {
+  Incomplete: 1,
+  'Pending approval': 2,
+  Approved: 3,
+  Rejected: 4,
+  Closed: 5,
+  Canceled: 6,
+  Preapproved: 7,
+  'Partially approved': 8,
+  'Canceled by source': 9,
+}
+
+export const ORACLE_STATUS_CODE_OPTIONS = Object.entries(ORACLE_STATUS_STYLES).map(([key, s]) => ({
+  code: ORACLE_STATUS_CODES[key],
+  label: s.label,
+}))
+
 const SYNC_STATUS_STYLES = {
   SUCCESS: { className: 'status-badge--ready', label: 'Success' },
   FAILED: { className: 'status-badge--danger', label: 'Failed' },

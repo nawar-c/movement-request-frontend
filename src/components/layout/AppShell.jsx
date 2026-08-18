@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth.js'
+import { DashboardIcon } from '../common/icons.jsx'
 
 export function AppShell() {
   const { user, logout } = useAuth()
@@ -11,6 +12,14 @@ export function AppShell() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <Link to="/movement-requests" className="app-topbar__brand" style={{ textDecoration: 'none' }}>
             Movement Requests
+          </Link>
+          <Link
+            to="/dashboard"
+            className="app-topbar__nav-link"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <DashboardIcon width={15} height={15} />
+            Dashboard
           </Link>
           {isAdmin ? (
             <>
