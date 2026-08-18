@@ -18,17 +18,22 @@ const destinationKey = (d) => `${d.organizationCode}|${d.subinventoryCode}`
 function syncResultMessage(result) {
   if (result === 'updated' || result === 'resolved') return 'Employee information synchronized successfully.'
   if (result === 'unchanged') return 'Employee information is already up to date.'
+  if (result === 'resolved_without_email') {
+    return 'Employee name synchronized, but no work email was found in Oracle HCM.'
+  }
   if (result === 'unresolved') return 'No Oracle HCM employee was found for this Employee ID.'
   return 'Unable to synchronize employee information.'
 }
 
-function EmployeeNameCell({ employeeName }) {
-  if (!employeeName) {
+// Shared display for Oracle-synchronized master data (Employee Name, Email) — same visual
+// language in both the Users list and the read-only Edit User fields.
+function SyncedFieldValue({ value }) {
+  if (!value) {
     return <span className="text-faint">Not synchronized</span>
   }
   return (
     <div>
-      <div>{employeeName}</div>
+      <div>{value}</div>
       <div className="text-faint" style={{ fontSize: 11 }}>
         Synced from Oracle HCM
       </div>
@@ -115,7 +120,7 @@ export function AdminUsersPage() {
         actions={
           <>
             <button type="button" className="btn" onClick={handleBulkSync} disabled={bulkSyncing}>
-              {bulkSyncing ? 'Syncing...' : 'Sync Employee Names'}
+              {bulkSyncing ? 'Syncing...' : 'Sync Employee Information'}
             </button>
             <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
               + New User
@@ -140,6 +145,7 @@ export function AdminUsersPage() {
               <span>Resolved: {bulkResult.resolved}</span>
               <span>Updated: {bulkResult.updated}</span>
               <span>Unchanged: {bulkResult.unchanged}</span>
+              <span>Resolved Without Email: {bulkResult.resolvedWithoutEmail ?? 0}</span>
               <span>Unresolved: {bulkResult.unresolved}</span>
               <span>Errors: {bulkResult.errors}</span>
             </div>
@@ -180,8 +186,8 @@ export function AdminUsersPage() {
                   {users.map((u) => (
                     <tr key={u.id}>
                       <td>{u.username}</td>
-                      <td><EmployeeNameCell employeeName={u.employeeName} /></td>
-                      <td>{u.email}</td>
+                      <td><SyncedFieldValue value={u.employeeName} /></td>
+                      <td><SyncedFieldValue value={u.email} /></td>
                       <td>{u.role}</td>
                       <td>{u.isNurse ? 'Yes' : 'No'}</td>
                       <td>{u.isActive ? 'Yes' : 'No'}</td>
@@ -312,7 +318,6 @@ function DestinationSubinventoryPicker({ selected, onChange }) {
 
 function CreateUserModal({ onClose, onCreated }) {
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isNurse, setIsNurse] = useState(false)
   const [role, setRole] = useState('USER')
@@ -327,10 +332,9 @@ function CreateUserModal({ onClose, onCreated }) {
     const passwordErrors = validatePassword(password)
     const errors = {
       username: username ? null : 'Username / Employee ID is required.',
-      email: email ? null : 'Email is required.',
       password: passwordErrors.length > 0 ? `Password must have ${passwordErrors.join(', ')}.` : null,
     }
-    if (errors.username || errors.email || errors.password) {
+    if (errors.username || errors.password) {
       setFieldErrors(errors)
       return
     }
@@ -338,7 +342,7 @@ function CreateUserModal({ onClose, onCreated }) {
     setSubmitting(true)
     setError(null)
     try {
-      await adminUsersApi.create({ username, email, password, isNurse, role, isActive, destinationSubinventories: destinations })
+      await adminUsersApi.create({ username, password, isNurse, role, isActive, destinationSubinventories: destinations })
       onCreated()
     } catch (err) {
       setError(err)
@@ -362,18 +366,6 @@ function CreateUserModal({ onClose, onCreated }) {
             autoFocus
           />
           {fieldErrors.username ? <div className="form-error">{fieldErrors.username}</div> : null}
-        </div>
-        <div className="form-field" style={{ marginTop: 14 }}>
-          <label className="form-label">
-            Email<span className="form-label__required">*</span>
-          </label>
-          <input
-            className={`form-input${fieldErrors.email ? ' has-error' : ''}`}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <div className="form-hint">Used for Forgot Password only — not the login username.</div>
-          {fieldErrors.email ? <div className="form-error">{fieldErrors.email}</div> : null}
         </div>
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">
@@ -426,7 +418,6 @@ function CreateUserModal({ onClose, onCreated }) {
 
 function EditUserModal({ user, onClose, onSaved }) {
   const [username, setUsername] = useState(user.username || '')
-  const [email, setEmail] = useState(user.email || '')
   const [isNurse, setIsNurse] = useState(Boolean(user.isNurse))
   const [role, setRole] = useState(user.role || 'USER')
   const [isActive, setIsActive] = useState(Boolean(user.isActive))
@@ -441,7 +432,6 @@ function EditUserModal({ user, onClose, onSaved }) {
     try {
       await adminUsersApi.update(user.id, {
         username,
-        email,
         isNurse,
         role,
         isActive,
@@ -473,10 +463,11 @@ function EditUserModal({ user, onClose, onSaved }) {
           <div className="form-hint">Synced from Oracle HCM — read-only. Use Sync Employee to update.</div>
         </div>
         <div className="form-field" style={{ marginTop: 14 }}>
-          <label className="form-label">
-            Email<span className="form-label__required">*</span>
-          </label>
-          <input className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label className="form-label">Email</label>
+          <div className="form-input" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+            {user.email || 'Not synchronized'}
+          </div>
+          <div className="form-hint">Synced from Oracle HCM — read-only. Use Sync Employee to update.</div>
         </div>
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">Role</label>
