@@ -5,9 +5,14 @@ import {
 } from '../common/StatusBadge.jsx'
 import { useOrganizations } from '../../hooks/useReferenceData.js'
 import { DATE_PRESETS, DEFAULT_DATE_PRESET } from '../../utils/dateRangePresets.js'
+import { formatDate } from '../../utils/formatters.js'
 
 const DEFAULT_FILTERS = {
   preset: DEFAULT_DATE_PRESET,
+  // Set only by clicking a single day on the Request Trend chart (DAY grain) — overrides the
+  // preset-derived date range with one exact calendar day. Still lives in the same shared filter
+  // state, not a chart-local state, per the directional click-to-filter model.
+  customDate: '',
   applicationStatus: '',
   oracleStatusCode: '',
   lineClosure: '',
@@ -31,7 +36,13 @@ export function DashboardFilters({ filters, onChange, onReset, updating }) {
   const presetLabel = (value) => DATE_PRESETS.find((p) => p.value === value)?.label || value
 
   const chips = []
-  if (filters.preset !== DEFAULT_DATE_PRESET) {
+  if (filters.customDate) {
+    chips.push({
+      key: 'customDate',
+      label: `Date: ${formatDate(filters.customDate) || filters.customDate}`,
+      clear: () => set('customDate', ''),
+    })
+  } else if (filters.preset !== DEFAULT_DATE_PRESET) {
     chips.push({ key: 'preset', label: presetLabel(filters.preset), clear: () => set('preset', DEFAULT_DATE_PRESET) })
   }
   if (filters.applicationStatus) {
@@ -74,9 +85,9 @@ export function DashboardFilters({ filters, onChange, onReset, updating }) {
               <button
                 key={p.value}
                 type="button"
-                className={`preset-btn${filters.preset === p.value ? ' preset-btn--active' : ''}`}
-                aria-pressed={filters.preset === p.value}
-                onClick={() => set('preset', p.value)}
+                className={`preset-btn${!filters.customDate && filters.preset === p.value ? ' preset-btn--active' : ''}`}
+                aria-pressed={!filters.customDate && filters.preset === p.value}
+                onClick={() => onChange({ preset: p.value, customDate: '' })}
               >
                 {p.label}
               </button>

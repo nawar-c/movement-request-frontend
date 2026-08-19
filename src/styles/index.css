@@ -23,6 +23,17 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.06);
   --shadow-md: 0 4px 16px rgba(16, 24, 32, 0.14);
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Chart palette (Phase 2) — kept separate from the semantic warning/success/danger tokens above.
+     --chart-1 is the single "volume" color (Request Trend). --chart-2..5 are a quiet, deliberately
+     non-semantic set (no red/amber/green) used only as deterministic fallback colors for Oracle
+     statuses this app doesn't have a known mapping for yet — so an unfamiliar status never gets
+     mistaken for a warning/success/danger signal. */
+  --chart-1: #1e5eab;
+  --chart-2: #2a8f8f;
+  --chart-3: #6366a8;
+  --chart-4: #4c9bc9;
+  --chart-5: #7a5a8f;
 }
 
 * {
@@ -1043,4 +1054,237 @@ a {
 
 .skeleton-kpi {
   height: 108px;
+}
+
+/* ===================================================================== */
+/* Dashboard analytics (Phase 2) — additive only                         */
+/* ===================================================================== */
+
+.kpi-card--clickable {
+  cursor: pointer;
+  border: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.kpi-card--clickable:hover {
+  border-color: var(--color-primary);
+}
+
+.kpi-card--active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card .card__body {
+  padding: 16px 20px 18px;
+}
+
+.chart-skeleton {
+  height: 220px;
+}
+
+.chart-skeleton--slim {
+  height: 64px;
+}
+
+.chart-empty {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  padding: 0 20px;
+}
+
+.chart-empty--error {
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-danger);
+}
+
+.chart-inline-error {
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.chart-caption {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  margin-top: 6px;
+}
+
+.chart-clickable {
+  cursor: pointer;
+}
+
+/* Recharts tooltip — styled to match the app's floating-panel language (combobox menu / freshness
+   popover) rather than Recharts' default tooltip box. */
+.chart-tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 8px 10px;
+  font-size: 12px;
+  min-width: 120px;
+}
+
+.chart-tooltip__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--color-text);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-muted);
+}
+
+.chart-tooltip__row strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Donut + legend */
+.donut-layout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.chart-legend--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 12px;
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: none;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  cursor: default;
+  width: 100%;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.chart-legend--row .chart-legend__item {
+  width: auto;
+}
+
+/* Only entries with a real, honest single-filter mapping get the clickable treatment — e.g. Oracle
+   Status's "Not Submitted" row stays visually static (no pointer, no hover) since it has no
+   equivalent filter value. */
+.chart-legend__item--clickable {
+  cursor: pointer;
+}
+
+.chart-legend__item--clickable:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.chart-legend__item--clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.chart-legend__item--active {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.chart-legend__item:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.chart-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.chart-legend__label {
+  flex: 1;
+}
+
+.chart-legend--row .chart-legend__label {
+  flex: none;
+}
+
+.chart-legend__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Line Closure stacked bar */
+.closure-bar {
+  display: flex;
+  width: 100%;
+  height: 22px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-neutral-bg);
+}
+
+.closure-bar__segment {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+  min-width: 2px;
+}
+
+.closure-bar__segment--active {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }

@@ -22,4 +22,14 @@ export const reportsApi = {
   getDashboardSummary: (filters) => apiClient.get('/api/reports/dashboard-summary', buildParams(filters)),
 
   getDataFreshness: () => apiClient.get('/api/reports/data-freshness'),
+
+  // Phase 2 analytics — same filter contract, confirmed live against the deployed API (identical
+  // strict-validation query params as dashboard-summary), so buildParams() is reused as-is.
+  getRequestTrend: (filters) => apiClient.get('/api/reports/request-trend', buildParams(filters)),
+
+  getOracleStatusDistribution: (filters) =>
+    apiClient.get('/api/reports/oracle-status-distribution', buildParams(filters)),
+
+  getLineClosureDistribution: (filters) =>
+    apiClient.get('/api/reports/line-closure-distribution', buildParams(filters)),
 }
