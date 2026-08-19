@@ -1288,3 +1288,154 @@ a {
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
+
+/* ===================================================================== */
+/* Dashboard operational drill-down (Phase 3) — additive only            */
+/* ===================================================================== */
+
+/* Destination Activity / Source Activity panel pair */
+.activity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+
+.activity-row:hover {
+  background: var(--color-bg);
+}
+
+.activity-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.activity-row--active {
+  background: rgba(30, 94, 171, 0.08);
+}
+
+.activity-row__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-row__bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-neutral-bg);
+  overflow: hidden;
+}
+
+.activity-row__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--chart-1);
+}
+
+.activity-row--active .activity-row__bar-fill {
+  background: var(--color-primary);
+}
+
+.activity-row__count {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.activity-row__linecount {
+  font-weight: 400;
+  color: var(--color-text-faint);
+}
+
+.chart-skeleton--activity {
+  height: 160px;
+}
+
+.chart-skeleton--table {
+  height: 200px;
+}
+
+/* More Filters expandable panel */
+.more-filters-panel {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.more-filters-panel .form-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* Attention Worklist / Matching Requests tables */
+.data-table--clickable-rows tbody tr {
+  cursor: pointer;
+}
+
+.data-table--clickable-rows tbody tr:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.reason-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.pagination-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

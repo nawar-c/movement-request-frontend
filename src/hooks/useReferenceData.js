@@ -85,6 +85,43 @@ export function useDestinationSubinventories(organizationCode) {
   )
 }
 
+// Dashboard "More Filters" only (Phase 3): loads SOURCE-eligible subinventories (the `isSource`
+// flag on /api/reference/subinventories) for several organizations at once, mirroring
+// useDestinationSubinventoriesByOrganizations below so the Source Subinventory select can group
+// options by organization without requiring an Organization filter to already be selected.
+export function useSourceSubinventoriesByOrganizations(organizationCodes) {
+  const key = organizationCodes.join(',')
+  const [state, setState] = useState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: true, error: null })
+
+  useEffect(() => {
+    if (organizationCodes.length === 0) {
+      setState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: false, error: null })
+      return
+    }
+    let cancelled = false
+    setState((prev) => ({ ...prev, loading: true, error: null }))
+    Promise.all(
+      organizationCodes.map((code) =>
+        referenceApi.getSubinventories(code).then((data) => [code, data.filter((s) => s.isSource)]),
+      ),
+    )
+      .then((entries) => {
+        if (cancelled) return
+        setState({ dataByOrg: Object.fromEntries(entries), loading: false, error: null })
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setState({ dataByOrg: EMPTY_DESTINATIONS_BY_ORG, loading: false, error })
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return state
+}
+
 // Admin user-definition screen only: loads destination subinventories for several organizations
 // at once (one small request per org) so the assignment UI can group choices by organization.
 export function useDestinationSubinventoriesByOrganizations(organizationCodes) {

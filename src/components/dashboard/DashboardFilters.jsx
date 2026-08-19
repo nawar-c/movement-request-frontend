@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import {
   LOCAL_STATUS_OPTIONS,
   LINE_CLOSURE_OPTIONS,
   ORACLE_STATUS_CODE_OPTIONS,
 } from '../common/StatusBadge.jsx'
-import { useOrganizations } from '../../hooks/useReferenceData.js'
+import {
+  useOrganizations,
+  useSourceSubinventoriesByOrganizations,
+  useDestinationSubinventoriesByOrganizations,
+} from '../../hooks/useReferenceData.js'
 import { DATE_PRESETS, DEFAULT_DATE_PRESET } from '../../utils/dateRangePresets.js'
 import { formatDate } from '../../utils/formatters.js'
 
@@ -17,12 +22,48 @@ const DEFAULT_FILTERS = {
   oracleStatusCode: '',
   lineClosure: '',
   organizationCode: '',
+  // Phase 3 — same shared filter state, populated either by the More Filters selects below or by
+  // clicking a Destination/Source Activity row on the dashboard.
+  sourceSubinventory: '',
+  destinationSubinventory: '',
 }
 
 export { DEFAULT_FILTERS }
 
+// Groups a {orgCode: [{code, name, ...}]} map into the organizations that actually have options,
+// in organization list order — used so the Source/Destination selects can show <optgroup> labels
+// instead of a flat list once more than one organization is in play.
+function groupByOrganization(dataByOrg, organizations, onlyOrgCode) {
+  const orgs = onlyOrgCode
+    ? organizations.filter((o) => o.code === onlyOrgCode)
+    : organizations
+  return orgs
+    .map((org) => ({ org, items: dataByOrg[org.code] || [] }))
+    .filter((g) => g.items.length > 0)
+}
+
 export function DashboardFilters({ filters, onChange, onReset, updating }) {
   const organizations = useOrganizations()
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
+  const [hasOpenedMoreFilters, setHasOpenedMoreFilters] = useState(false)
+
+  // Reference data for the two new selects is only fetched once More Filters is opened for the
+  // first time — not on every Dashboard load — since most visits won't touch it.
+  const orgCodesForSubinventories = hasOpenedMoreFilters ? organizations.data.map((o) => o.code) : []
+  const sourceByOrg = useSourceSubinventoriesByOrganizations(orgCodesForSubinventories)
+  const destinationByOrg = useDestinationSubinventoriesByOrganizations(orgCodesForSubinventories)
+
+  const sourceGroups = groupByOrganization(sourceByOrg.dataByOrg, organizations.data, filters.organizationCode)
+  const destinationGroups = groupByOrganization(
+    destinationByOrg.dataByOrg,
+    organizations.data,
+    filters.organizationCode,
+  )
+
+  function toggleMoreFilters() {
+    setMoreFiltersOpen((open) => !open)
+    setHasOpenedMoreFilters(true)
+  }
 
   function set(key, value) {
     onChange({ [key]: value })
@@ -71,6 +112,20 @@ export function DashboardFilters({ filters, onChange, onReset, updating }) {
       key: 'organizationCode',
       label: `Org: ${orgLabel(filters.organizationCode)}`,
       clear: () => set('organizationCode', ''),
+    })
+  }
+  if (filters.sourceSubinventory) {
+    chips.push({
+      key: 'sourceSubinventory',
+      label: `Source: ${filters.sourceSubinventory}`,
+      clear: () => set('sourceSubinventory', ''),
+    })
+  }
+  if (filters.destinationSubinventory) {
+    chips.push({
+      key: 'destinationSubinventory',
+      label: `Destination: ${filters.destinationSubinventory}`,
+      clear: () => set('destinationSubinventory', ''),
     })
   }
 
@@ -154,8 +209,8 @@ export function DashboardFilters({ filters, onChange, onReset, updating }) {
           <button
             type="button"
             className="btn btn-sm"
-            disabled
-            title="Source, Destination, and Requester filters are coming in a later phase."
+            aria-expanded={moreFiltersOpen}
+            onClick={toggleMoreFilters}
           >
             More Filters
           </button>
@@ -173,6 +228,57 @@ export function DashboardFilters({ filters, onChange, onReset, updating }) {
             </span>
           ) : null}
         </div>
+
+        {moreFiltersOpen ? (
+          <div className="more-filters-panel">
+            <div className="form-field">
+              <label className="form-label" htmlFor="dashboard-source-subinventory">
+                Source Subinventory
+              </label>
+              <select
+                id="dashboard-source-subinventory"
+                className="form-select"
+                value={filters.sourceSubinventory}
+                onChange={(e) => set('sourceSubinventory', e.target.value)}
+                disabled={sourceByOrg.loading}
+              >
+                <option value="">All Sources</option>
+                {sourceGroups.map(({ org, items }) => (
+                  <optgroup key={org.code} label={org.name || org.code}>
+                    {items.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.name || s.code}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="dashboard-destination-subinventory">
+                Destination Subinventory
+              </label>
+              <select
+                id="dashboard-destination-subinventory"
+                className="form-select"
+                value={filters.destinationSubinventory}
+                onChange={(e) => set('destinationSubinventory', e.target.value)}
+                disabled={destinationByOrg.loading}
+              >
+                <option value="">All Destinations</option>
+                {destinationGroups.map(({ org, items }) => (
+                  <optgroup key={org.code} label={org.name || org.code}>
+                    {items.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.name || s.code}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : null}
 
         {chips.length > 0 ? (
           <div className="filter-chips">

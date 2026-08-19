@@ -9,6 +9,9 @@ import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton.jsx
 import { RequestTrendChart } from '../components/dashboard/RequestTrendChart.jsx'
 import { OracleStatusDonut } from '../components/dashboard/OracleStatusDonut.jsx'
 import { LineClosureBar } from '../components/dashboard/LineClosureBar.jsx'
+import { SubinventoryActivityPanel } from '../components/dashboard/SubinventoryActivityPanel.jsx'
+import { AttentionWorklist } from '../components/dashboard/AttentionWorklist.jsx'
+import { MatchingRequestsTable } from '../components/dashboard/MatchingRequestsTable.jsx'
 import { ClockIcon, LayersIcon, CheckCircleIcon, AlertIcon } from '../components/common/icons.jsx'
 import { reportsApi } from '../api/reportsApi.js'
 import { resolveDatePreset, DATE_PRESETS } from '../utils/dateRangePresets.js'
@@ -30,8 +33,14 @@ function buildRequestFilters(filters) {
     oracleStatusCode: filters.oracleStatusCode || undefined,
     lineClosure: filters.lineClosure || undefined,
     organizationCode: filters.organizationCode || undefined,
+    sourceSubinventory: filters.sourceSubinventory || undefined,
+    destinationSubinventory: filters.destinationSubinventory || undefined,
   }
 }
+
+// Dashboard-widget-sized page (the backend default is 25; both new tables are compact worklists,
+// not the general request browser, so a smaller page reads better here).
+const DASHBOARD_TABLE_PAGE_SIZE = 10
 
 export function DashboardPage() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
@@ -50,6 +59,51 @@ export function DashboardPage() {
   const trend = useReportResource(reportsApi.getRequestTrend, requestFilters)
   const oracleDistribution = useReportResource(reportsApi.getOracleStatusDistribution, requestFilters)
   const lineClosureDistribution = useReportResource(reportsApi.getLineClosureDistribution, requestFilters)
+
+  // Phase 3 — operational drill-down. Destination/Source Activity and the Attention worklist stay
+  // visible at baseline, same independent-resource pattern as the Phase 2 charts above. Matching
+  // Requests only fetches once a real analytical filter narrows the Dashboard (see
+  // hasActiveAnalyticalFilter below) — at baseline it would just duplicate the Movement Requests
+  // page, so useReportResource is told not to fetch via `enabled`.
+  const destinationActivity = useReportResource(reportsApi.getDestinationActivity, requestFilters)
+  const sourceActivity = useReportResource(reportsApi.getSourceActivity, requestFilters)
+
+  const [attentionPage, setAttentionPage] = useState(1)
+  const attention = useReportResource(reportsApi.getAttention, requestFilters, {
+    extraArgs: [attentionPage, DASHBOARD_TABLE_PAGE_SIZE],
+  })
+
+  const hasActiveAnalyticalFilter = Boolean(
+    filters.customDate ||
+      filters.preset !== DEFAULT_FILTERS.preset ||
+      filters.applicationStatus ||
+      filters.oracleStatusCode ||
+      filters.lineClosure ||
+      filters.organizationCode ||
+      filters.sourceSubinventory ||
+      filters.destinationSubinventory,
+  )
+
+  const [requestsPage, setRequestsPage] = useState(1)
+  const matchingRequests = useReportResource(reportsApi.getRequests, requestFilters, {
+    extraArgs: [requestsPage, DASHBOARD_TABLE_PAGE_SIZE],
+    enabled: hasActiveAnalyticalFilter,
+  })
+
+  // Any shared-filter change invalidates whatever page a paginated table was sitting on.
+  useEffect(() => {
+    setAttentionPage(1)
+    setRequestsPage(1)
+  }, [
+    requestFilters.dateFrom,
+    requestFilters.dateTo,
+    requestFilters.applicationStatus,
+    requestFilters.oracleStatusCode,
+    requestFilters.lineClosure,
+    requestFilters.organizationCode,
+    requestFilters.sourceSubinventory,
+    requestFilters.destinationSubinventory,
+  ])
 
   function loadSummary() {
     const currentRequest = ++requestId.current
@@ -82,6 +136,8 @@ export function DashboardPage() {
       requestFilters.oracleStatusCode,
       requestFilters.lineClosure,
       requestFilters.organizationCode,
+      requestFilters.sourceSubinventory,
+      requestFilters.destinationSubinventory,
     ],
   )
 
@@ -219,6 +275,49 @@ export function DashboardPage() {
             selected={filters.lineClosure}
             onSegmentClick={(key) => toggleFilter('lineClosure', key)}
           />
+
+          <div className="activity-grid">
+            <SubinventoryActivityPanel
+              title="Destination Activity"
+              data={destinationActivity.data}
+              loading={destinationActivity.loading}
+              hasLoadedOnce={destinationActivity.hasLoadedOnce}
+              error={destinationActivity.error}
+              onRetry={destinationActivity.reload}
+              selectedValue={filters.destinationSubinventory}
+              onItemClick={(code) => toggleFilter('destinationSubinventory', code)}
+            />
+            <SubinventoryActivityPanel
+              title="Source Activity"
+              data={sourceActivity.data}
+              loading={sourceActivity.loading}
+              hasLoadedOnce={sourceActivity.hasLoadedOnce}
+              error={sourceActivity.error}
+              onRetry={sourceActivity.reload}
+              selectedValue={filters.sourceSubinventory}
+              onItemClick={(code) => toggleFilter('sourceSubinventory', code)}
+            />
+          </div>
+
+          <AttentionWorklist
+            data={attention.data}
+            loading={attention.loading}
+            hasLoadedOnce={attention.hasLoadedOnce}
+            error={attention.error}
+            onRetry={attention.reload}
+            onPageChange={setAttentionPage}
+          />
+
+          {hasActiveAnalyticalFilter ? (
+            <MatchingRequestsTable
+              data={matchingRequests.data}
+              loading={matchingRequests.loading}
+              hasLoadedOnce={matchingRequests.hasLoadedOnce}
+              error={matchingRequests.error}
+              onRetry={matchingRequests.reload}
+              onPageChange={setRequestsPage}
+            />
+          ) : null}
         </>
       ) : null}
     </div>

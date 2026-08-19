@@ -15,6 +15,8 @@ function buildParams(filters = {}) {
   }
   if (filters.lineClosure) params.lineClosure = filters.lineClosure
   if (filters.organizationCode) params.organizationCode = filters.organizationCode
+  if (filters.sourceSubinventory) params.sourceSubinventory = filters.sourceSubinventory
+  if (filters.destinationSubinventory) params.destinationSubinventory = filters.destinationSubinventory
   return params
 }
 
@@ -32,4 +34,18 @@ export const reportsApi = {
 
   getLineClosureDistribution: (filters) =>
     apiClient.get('/api/reports/line-closure-distribution', buildParams(filters)),
+
+  // Phase 3 operational drill-down — confirmed live against the deployed API. destination-activity
+  // and source-activity return a flat, unpaginated array (small, bounded by subinventory count);
+  // attention and requests return the {items, page, pageSize, total} shape and accept page/pageSize.
+  getDestinationActivity: (filters) => apiClient.get('/api/reports/destination-activity', buildParams(filters)),
+
+  getSourceActivity: (filters) => apiClient.get('/api/reports/source-activity', buildParams(filters)),
+
+  getAttention: (filters, page, pageSize) =>
+    apiClient.get('/api/reports/attention', { ...buildParams(filters), page, pageSize }),
+
+  // oracle_response is never requested and is confirmed absent from this endpoint's fields.
+  getRequests: (filters, page, pageSize) =>
+    apiClient.get('/api/reports/requests', { ...buildParams(filters), page, pageSize }),
 }
