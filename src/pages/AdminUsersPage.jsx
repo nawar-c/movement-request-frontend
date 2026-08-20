@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { Modal } from '../components/common/Modal.jsx'
+import { LookupCombobox } from '../components/common/LookupCombobox.jsx'
 import { LoadingState, ErrorState, EmptyState, InlineError, InlineNotice } from '../components/common/States.jsx'
 import { adminUsersApi } from '../api/adminUsersApi.js'
+import { referenceApi } from '../api/referenceApi.js'
 import { useOrganizations, useDestinationSubinventoriesByOrganizations } from '../hooks/useReferenceData.js'
 import { PASSWORD_POLICY_HINT, validatePassword } from '../utils/validation.js'
 
@@ -320,6 +322,50 @@ function DestinationSubinventoryPicker({ selected, onChange }) {
   )
 }
 
+// Searchable Cost Center picker shared by Create/Edit User — reuses the same LookupCombobox +
+// referenceApi.searchCostCenters pattern already established on the (untouched-this-round) MR
+// header Cost Center field. Unlike that field, this one also supports manual entry: the backend
+// deliberately does not require Cost Center to exist in the reference cache (that cache is known
+// incomplete against real historical values), so onTermChange keeps whatever the admin last typed
+// as a valid value even if they never click a suggestion.
+function CostCenterField({ costCenterLabel, onChange, hasError }) {
+  function handleSelect(cc) {
+    onChange({
+      costCenter: cc ? cc.code : '',
+      costCenterLabel: cc ? `${cc.code} — ${cc.name}` : '',
+    })
+  }
+
+  function handleTermChange(text) {
+    onChange({ costCenter: text, costCenterLabel: text })
+  }
+
+  return (
+    <div className="form-field" style={{ marginTop: 14 }}>
+      <label className="form-label">Cost Center</label>
+      <LookupCombobox
+        displayLabel={costCenterLabel}
+        onSearch={async (term) => ({ items: await referenceApi.searchCostCenters(term), hasMore: false })}
+        onSelect={handleSelect}
+        onTermChange={handleTermChange}
+        renderOption={(cc) => (
+          <>
+            <span className="combobox__option-primary">{cc.code}</span>
+            <span className="combobox__option-secondary">{cc.name}</span>
+          </>
+        )}
+        getOptionKey={(cc) => cc.code}
+        placeholder="Search Cost Center, or type the exact code..."
+        hasError={hasError}
+      />
+      <div className="form-hint">
+        Admin-managed — used as the default Cost Center on this user&rsquo;s Movement Requests. If a
+        code isn&rsquo;t found in search, you can still type it exactly.
+      </div>
+    </div>
+  )
+}
+
 function CreateUserModal({ onClose, onCreated }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -327,6 +373,7 @@ function CreateUserModal({ onClose, onCreated }) {
   const [role, setRole] = useState('USER')
   const [isActive, setIsActive] = useState(true)
   const [costCenter, setCostCenter] = useState('')
+  const [costCenterLabel, setCostCenterLabel] = useState('')
   const [destinations, setDestinations] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -414,16 +461,13 @@ function CreateUserModal({ onClose, onCreated }) {
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
         </label>
-        <div className="form-field" style={{ marginTop: 14 }}>
-          <label className="form-label">Cost Center</label>
-          <input
-            className="form-input"
-            value={costCenter}
-            onChange={(e) => setCostCenter(e.target.value)}
-            placeholder="e.g. DEMO-CC-100"
-          />
-          <div className="form-hint">Admin-managed — used as the default Cost Center on this user&rsquo;s Movement Requests.</div>
-        </div>
+        <CostCenterField
+          costCenterLabel={costCenterLabel}
+          onChange={({ costCenter: cc, costCenterLabel: label }) => {
+            setCostCenter(cc)
+            setCostCenterLabel(label)
+          }}
+        />
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">Allowed Destination Subinventories</label>
           <DestinationSubinventoryPicker selected={destinations} onChange={setDestinations} />
@@ -446,7 +490,11 @@ function EditUserModal({ user, onClose, onSaved }) {
   const [isNurse, setIsNurse] = useState(Boolean(user.isNurse))
   const [role, setRole] = useState(user.role || 'USER')
   const [isActive, setIsActive] = useState(Boolean(user.isActive))
+  // The stored value only carries the code, not its name — same limitation as the MR header's Cost
+  // Center (MovementRequestEditPage.jsx toHeaderFormState). Show the code until the admin searches
+  // again.
   const [costCenter, setCostCenter] = useState(user.costCenter || '')
+  const [costCenterLabel, setCostCenterLabel] = useState(user.costCenter || '')
   const [destinations, setDestinations] = useState(user.destinationSubinventories || [])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -516,16 +564,13 @@ function EditUserModal({ user, onClose, onSaved }) {
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
         </label>
-        <div className="form-field" style={{ marginTop: 14 }}>
-          <label className="form-label">Cost Center</label>
-          <input
-            className="form-input"
-            value={costCenter}
-            onChange={(e) => setCostCenter(e.target.value)}
-            placeholder="e.g. DEMO-CC-100"
-          />
-          <div className="form-hint">Admin-managed — used as the default Cost Center on this user&rsquo;s Movement Requests.</div>
-        </div>
+        <CostCenterField
+          costCenterLabel={costCenterLabel}
+          onChange={({ costCenter: cc, costCenterLabel: label }) => {
+            setCostCenter(cc)
+            setCostCenterLabel(label)
+          }}
+        />
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">Allowed Destination Subinventories</label>
           <DestinationSubinventoryPicker selected={destinations} onChange={setDestinations} />

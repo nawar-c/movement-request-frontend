@@ -4,10 +4,17 @@ const DEBOUNCE_MS = 300
 
 // onSearch(term, { offset }) must resolve to { items, hasMore }. For lookups small enough that a
 // single request always returns every match (e.g. Cost Center), hasMore can simply be false.
+//
+// onTermChange(text) is optional and purely additive — existing callers that don't pass it are
+// unaffected. It fires on every real keystroke (never on the internal displayLabel-driven sync
+// that follows a selection), letting a parent track raw typed text as a manual-entry fallback
+// value alongside normal search-and-select, for lookups where the backend intentionally doesn't
+// require the value to exist in the reference cache (e.g. Cost Center — see AdminUsersPage.jsx).
 export function LookupCombobox({
   displayLabel,
   onSelect,
   onSearch,
+  onTermChange,
   renderOption,
   getOptionKey,
   minChars = 3,
@@ -107,6 +114,7 @@ export function LookupCombobox({
           setTerm(e.target.value)
           setOpen(true)
           if (!e.target.value) onSelect(null)
+          onTermChange?.(e.target.value)
         }}
         onFocus={() => setOpen(true)}
       />

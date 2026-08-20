@@ -62,7 +62,21 @@ export function AdminOrganizationAccountsPage() {
                       <td>{org.name || org.code}</td>
                       <td>
                         {config ? (
-                          config.destinationAccount
+                          config.combinationCode ? (
+                            <>
+                              <div>{config.combinationCode}</div>
+                              <div className="text-faint" style={{ fontSize: 11 }}>
+                                CCID: {config.destinationAccount}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>{config.destinationAccount}</div>
+                              <div className="text-faint" style={{ fontSize: 11 }}>
+                                Not resolved in the synced account cache — showing internal ID
+                              </div>
+                            </>
+                          )
                         ) : (
                           <span className="text-faint">Not configured</span>
                         )}
@@ -109,11 +123,14 @@ export function AdminOrganizationAccountsPage() {
 }
 
 function SetDefaultAccountModal({ organization, config, onClose, onSaved }) {
-  // The stored config only carries the Oracle CCID, not its combinationCode label — same limitation
-  // as the MR header's Cost Center (see MovementRequestEditPage.jsx toHeaderFormState). Show the raw
-  // CCID until the admin searches again, rather than fetching/inventing a label.
+  // The list response resolves the stored CCID to its readable combinationCode via a backend join
+  // against the synced account cache (when the CCID is present there) — prefer that for the initial
+  // label so editing an existing mapping doesn't force a re-search. Falls back to the raw CCID only
+  // when the cache can't resolve it (same limitation as the MR header's Cost Center display).
   const [destinationAccountId, setDestinationAccountId] = useState(config?.destinationAccount || '')
-  const [destinationAccountLabel, setDestinationAccountLabel] = useState(config?.destinationAccount || '')
+  const [destinationAccountLabel, setDestinationAccountLabel] = useState(
+    config?.combinationCode || config?.destinationAccount || '',
+  )
   const [enabled, setEnabled] = useState(config ? config.enabled : true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
