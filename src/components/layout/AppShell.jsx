@@ -29,6 +29,9 @@ export function AppShell() {
               <Link to="/admin/approval-rules" className="app-topbar__nav-link">
                 Approval Rules
               </Link>
+              <Link to="/admin/organization-default-accounts" className="app-topbar__nav-link">
+                Org Accounts
+              </Link>
               <Link to="/admin/master-data-sync" className="app-topbar__nav-link">
                 Admin
               </Link>

@@ -175,6 +175,7 @@ export function AdminUsersPage() {
                     <th>Username / Employee ID</th>
                     <th>Employee Name</th>
                     <th>Email</th>
+                    <th>Cost Center</th>
                     <th>Role</th>
                     <th>Is Nurse</th>
                     <th>Active</th>
@@ -188,6 +189,9 @@ export function AdminUsersPage() {
                       <td>{u.username}</td>
                       <td><SyncedFieldValue value={u.employeeName} /></td>
                       <td><SyncedFieldValue value={u.email} /></td>
+                      <td>
+                        {u.costCenter ? u.costCenter : <span className="text-faint">Not configured</span>}
+                      </td>
                       <td>{u.role}</td>
                       <td>{u.isNurse ? 'Yes' : 'No'}</td>
                       <td>{u.isActive ? 'Yes' : 'No'}</td>
@@ -322,6 +326,7 @@ function CreateUserModal({ onClose, onCreated }) {
   const [isNurse, setIsNurse] = useState(false)
   const [role, setRole] = useState('USER')
   const [isActive, setIsActive] = useState(true)
+  const [costCenter, setCostCenter] = useState('')
   const [destinations, setDestinations] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -342,7 +347,17 @@ function CreateUserModal({ onClose, onCreated }) {
     setSubmitting(true)
     setError(null)
     try {
-      await adminUsersApi.create({ username, password, isNurse, role, isActive, destinationSubinventories: destinations })
+      await adminUsersApi.create({
+        username,
+        password,
+        isNurse,
+        role,
+        isActive,
+        // Omitted entirely (not sent as '') when blank — backend's costCenter field is nullable/
+        // optional but rejects an empty string as invalid, same convention as Edit below.
+        ...(costCenter.trim() ? { costCenter: costCenter.trim() } : {}),
+        destinationSubinventories: destinations,
+      })
       onCreated()
     } catch (err) {
       setError(err)
@@ -400,6 +415,16 @@ function CreateUserModal({ onClose, onCreated }) {
           Active
         </label>
         <div className="form-field" style={{ marginTop: 14 }}>
+          <label className="form-label">Cost Center</label>
+          <input
+            className="form-input"
+            value={costCenter}
+            onChange={(e) => setCostCenter(e.target.value)}
+            placeholder="e.g. DEMO-CC-100"
+          />
+          <div className="form-hint">Admin-managed — used as the default Cost Center on this user&rsquo;s Movement Requests.</div>
+        </div>
+        <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">Allowed Destination Subinventories</label>
           <DestinationSubinventoryPicker selected={destinations} onChange={setDestinations} />
         </div>
@@ -421,6 +446,7 @@ function EditUserModal({ user, onClose, onSaved }) {
   const [isNurse, setIsNurse] = useState(Boolean(user.isNurse))
   const [role, setRole] = useState(user.role || 'USER')
   const [isActive, setIsActive] = useState(Boolean(user.isActive))
+  const [costCenter, setCostCenter] = useState(user.costCenter || '')
   const [destinations, setDestinations] = useState(user.destinationSubinventories || [])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -435,6 +461,9 @@ function EditUserModal({ user, onClose, onSaved }) {
         isNurse,
         role,
         isActive,
+        // '' means the admin cleared the field — send null to explicitly clear the stored value
+        // (backend: omit to leave untouched, null to clear). A non-empty value is sent as typed.
+        costCenter: costCenter.trim() ? costCenter.trim() : null,
         destinationSubinventories: destinations,
       })
       onSaved()
@@ -487,6 +516,16 @@ function EditUserModal({ user, onClose, onSaved }) {
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
         </label>
+        <div className="form-field" style={{ marginTop: 14 }}>
+          <label className="form-label">Cost Center</label>
+          <input
+            className="form-input"
+            value={costCenter}
+            onChange={(e) => setCostCenter(e.target.value)}
+            placeholder="e.g. DEMO-CC-100"
+          />
+          <div className="form-hint">Admin-managed — used as the default Cost Center on this user&rsquo;s Movement Requests.</div>
+        </div>
         <div className="form-field" style={{ marginTop: 14 }}>
           <label className="form-label">Allowed Destination Subinventories</label>
           <DestinationSubinventoryPicker selected={destinations} onChange={setDestinations} />

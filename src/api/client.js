@@ -104,4 +104,5 @@ export const apiClient = {
   get: (path, params, options) => request('GET', path, { params, ...options }),
   post: (path, body, options) => request('POST', path, { body, ...options }),
   patch: (path, body, options) => request('PATCH', path, { body, ...options }),
+  put: (path, body, options) => request('PUT', path, { body, ...options }),
 }
