@@ -99,15 +99,20 @@ describe('E — serializeHeaderForApi never sends costCenter (create or update)'
   })
 
   test('other header fields still serialize normally', () => {
+    // sourceSubinventory is intentionally included here (Phase E2: header-level Source
+    // Subinventory) — see test/movementRequestHeaderPhaseE2.test.js item B for its dedicated
+    // coverage. This test's own concern (costCenter never appearing) is unaffected.
     const body = serializeHeaderForApi({
       inventoryOrganization: 'DRUG',
       requiredDate: '2026-08-20',
       description: 'test',
+      sourceSubinventory: 'DRUG_MAIN',
     })
     assert.deepEqual(body, {
       inventoryOrganization: 'DRUG',
       requiredDate: '2026-08-20',
       description: 'test',
+      sourceSubinventory: 'DRUG_MAIN',
     })
   })
 })

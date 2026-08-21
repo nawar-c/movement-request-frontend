@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/common/Modal.jsx'
 import { useMovementRequest } from '../hooks/useMovementRequest.js'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { formatDate, formatDateTime } from '../utils/formatters.js'
+import { deriveHeaderSourceSubinventory } from '../utils/movementRequestHeader.js'
 
 function friendlySubmitError(err) {
   if (err.code === 'NO_APPROVAL_SUBMISSION_NOT_CONFIGURED') {
@@ -59,6 +60,12 @@ export function MovementRequestViewPage() {
     if (types.has('Movement Request Transfer')) return 'Transfer'
     return null
   }, [mr])
+
+  // Phase E2: new-style requests carry mr.sourceSubinventory directly. Historical requests
+  // (header null) fall back to the lines: a common value displays as a compatibility source, but a
+  // genuine conflict (e.g. MR-000039: DRUG_MAIN vs INPHR_DRUG) must never be silently resolved into
+  // one — the line-level Source column in the table below stays the source of truth for those.
+  const source = useMemo(() => (mr ? deriveHeaderSourceSubinventory(mr) : null), [mr])
 
   if (loading) return <LoadingState label="Loading movement request..." />
   if (error) return <ErrorState message={error.message} />
@@ -140,6 +147,10 @@ export function MovementRequestViewPage() {
             <DetailField label="Inventory Organization" value={mr.inventoryOrganization} />
             <DetailField label="Movement Request Type" value={mr.movementRequestType} />
             <DetailField label="Required Date" value={formatDate(mr.requiredDate)} />
+            <DetailField
+              label="Source Subinventory"
+              value={source.conflict ? 'Varies by line (see Lines table)' : source.value}
+            />
             <DetailField label="Cost Center" value={mr.costCenter} />
             <DetailField label="Requested By" value={requestedByDisplay(mr)} />
             <DetailField label="Created" value={formatDateTime(mr.createdAt)} />

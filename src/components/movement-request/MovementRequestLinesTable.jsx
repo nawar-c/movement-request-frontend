@@ -11,7 +11,13 @@ function destinationLabel(line) {
   return line.destinationSubinventory || line.destinationAccount || line.destinationAccountId
 }
 
+// Phase E2: Requester is no longer an editable line field, but historical requests may still carry
+// a value written before the field was removed (e.g. MR-000039's two lines). Only shown in View
+// mode (disabled), and only when at least one line actually has a value — new-style requests never
+// will, so the column simply doesn't appear for them.
 export function MovementRequestLinesTable({ lines, onAdd, onEdit, onRemove, disabled }) {
+  const showRequesterColumn = disabled && lines.some((line) => line.requester)
+
   return (
     <div className="card">
       <div className="card__header">
@@ -38,6 +44,7 @@ export function MovementRequestLinesTable({ lines, onAdd, onEdit, onRemove, disa
                   <th>UOM</th>
                   <th>Source</th>
                   <th>Destination</th>
+                  {showRequesterColumn ? <th>Requester</th> : null}
                   {disabled ? <th>Oracle Line Status</th> : null}
                   {disabled ? <th>Oracle Status Code</th> : null}
                   {!disabled ? <th></th> : null}
@@ -56,6 +63,9 @@ export function MovementRequestLinesTable({ lines, onAdd, onEdit, onRemove, disa
                     <td>{line.uom || <span className="text-faint">—</span>}</td>
                     <td>{line.sourceSubinventory || <span className="text-faint">—</span>}</td>
                     <td>{destinationLabel(line) || <span className="text-faint">—</span>}</td>
+                    {showRequesterColumn ? (
+                      <td>{line.requester || <span className="text-faint">—</span>}</td>
+                    ) : null}
                     {disabled ? (
                       <td>
                         <OracleStatusBadge status={line.oracleStatus} />

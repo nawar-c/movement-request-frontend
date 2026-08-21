@@ -2,12 +2,18 @@ import { useState } from 'react'
 import { ItemSearchCombobox } from '../common/ItemSearchCombobox.jsx'
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
 import { LookupCombobox } from '../common/LookupCombobox.jsx'
-import { useUoms, useSubinventories, useDestinationSubinventories, useReasons } from '../../hooks/useReferenceData.js'
+import { useUoms, useDestinationSubinventories, useReasons } from '../../hooks/useReferenceData.js'
 import { referenceApi } from '../../api/referenceApi.js'
 
 const ISSUE_TRANSACTION_TYPE_ID = 63
 const TRANSFER_TRANSACTION_TYPE_ID = 64
 
+// Phase E2: Source Subinventory and Requester are no longer line-level write fields (Source moved
+// to the request header — see MovementRequestHeaderForm.jsx; Requester was removed from the
+// accepted contract entirely — see serializeLineForApi and the backend's lineSchema). When editing
+// an existing line, `{ ...initialLine }` still carries over whatever historical sourceSubinventory/
+// requester values that line already had (read-only compatibility — they're simply never shown or
+// re-sent here), so old records stay understandable without becoming editable again.
 function buildInitialForm(initialLine, headerDefaults) {
   if (initialLine) return { ...initialLine }
   return {
@@ -19,12 +25,10 @@ function buildInitialForm(initialLine, headerDefaults) {
     requestedQuantity: '',
     uom: '',
     requiredDate: headerDefaults.requiredDate || '',
-    sourceSubinventory: '',
     destinationSubinventory: '',
     destinationAccount: '',
     destinationAccountId: '',
     destinationAccountLabel: '',
-    requester: '',
     reason: '',
     reference: '',
     secondaryRequestedQuantity: '',
@@ -40,11 +44,9 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
   const [errors, setErrors] = useState({})
 
   const uoms = useUoms()
-  const subinventories = useSubinventories(organizationCode)
   const destinationSubinventories = useDestinationSubinventories(organizationCode)
   const reasons = useReasons()
 
-  const sourceSubinventoryOptions = subinventories.data.filter((s) => s.isSource)
   const isIssue = form.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID
   const isTransfer = form.transactionTypeId === TRANSFER_TRANSACTION_TYPE_ID
 
@@ -101,7 +103,6 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
       nextErrors.requestedQuantity = 'Enter a quantity greater than 0.'
     }
     if (!form.uom) nextErrors.uom = 'UOM is required.'
-    if (!form.sourceSubinventory) nextErrors.sourceSubinventory = 'Source Subinventory is required.'
     if (form.itemNumber && !form.transactionTypeId) {
       nextErrors.itemNumber = 'This item has no derived transaction type. Try re-selecting it.'
     }
@@ -206,22 +207,6 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
           <div className="section-divider">Source &amp; Destination</div>
           <div className="form-grid">
-            <div className="form-field">
-              <label className="form-label">
-                Source Subinventory<span className="form-label__required">*</span>
-              </label>
-              <ReferenceSelect
-                options={sourceSubinventoryOptions}
-                value={form.sourceSubinventory}
-                onChange={(v) => set('sourceSubinventory', v)}
-                loading={subinventories.loading}
-                disabled={!organizationCode}
-                hasError={Boolean(errors.sourceSubinventory)}
-                placeholder="Select subinventory..."
-              />
-              {errors.sourceSubinventory ? <div className="form-error">{errors.sourceSubinventory}</div> : null}
-            </div>
-
             {isTransfer ? (
               <div className="form-field">
                 <label className="form-label">
@@ -276,15 +261,6 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
           <div className="section-divider">Additional Details</div>
           <div className="form-grid">
-            <div className="form-field">
-              <label className="form-label">Requester</label>
-              <input
-                type="text"
-                className="form-input"
-                value={form.requester || ''}
-                onChange={(e) => set('requester', e.target.value)}
-              />
-            </div>
             <div className="form-field">
               <label className="form-label">Reason</label>
               <ReferenceSelect

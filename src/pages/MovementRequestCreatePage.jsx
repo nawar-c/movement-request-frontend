@@ -7,7 +7,7 @@ import { LineEditDrawer } from '../components/movement-request/LineEditDrawer.js
 import { InlineError, ErrorState } from '../components/common/States.jsx'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { validateHeader } from '../utils/validation.js'
-import { buildInitialHeader, isCostCenterMissing } from '../utils/movementRequestHeader.js'
+import { buildInitialHeader, isCostCenterMissing, applyOrgChange } from '../utils/movementRequestHeader.js'
 import { useAuth } from '../auth/useAuth.js'
 
 // Exact wording matches the backend's USER_COST_CENTER_NOT_CONFIGURED message (see
@@ -27,12 +27,12 @@ export function MovementRequestCreatePage() {
   const [saveError, setSaveError] = useState(null)
 
   function handleHeaderChange(nextHeader) {
-    // Every line field (item, source/destination subinventory or account) is organization-scoped,
-    // so a changed organization invalidates all existing lines rather than leaving stale values.
-    if (nextHeader.inventoryOrganization !== header.inventoryOrganization) {
-      setLines([])
-    }
-    setHeader(nextHeader)
+    // Every line field (item, destination subinventory or account) plus the header's own Source
+    // Subinventory are organization-scoped, so a changed organization invalidates all existing
+    // lines and clears the selected Source rather than leaving stale values.
+    const { header: resolvedHeader, shouldClearLines } = applyOrgChange(header, nextHeader)
+    if (shouldClearLines) setLines([])
+    setHeader(resolvedHeader)
   }
 
   function openAddLine() {

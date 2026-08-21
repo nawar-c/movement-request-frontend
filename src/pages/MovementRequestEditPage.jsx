@@ -8,7 +8,11 @@ import { LoadingState, ErrorState, InlineError } from '../components/common/Stat
 import { useMovementRequest } from '../hooks/useMovementRequest.js'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { validateHeader } from '../utils/validation.js'
-import { toEditHeaderFormState as toHeaderFormState, toEditLineFormState as toLineFormState } from '../utils/movementRequestHeader.js'
+import {
+  toEditHeaderFormState as toHeaderFormState,
+  toEditLineFormState as toLineFormState,
+  applyOrgChange,
+} from '../utils/movementRequestHeader.js'
 
 export function MovementRequestEditPage() {
   const { id } = useParams()
@@ -47,12 +51,12 @@ export function MovementRequestEditPage() {
   }
 
   function handleHeaderChange(nextHeader) {
-    // Every line field (item, source/destination subinventory or account) is organization-scoped,
-    // so a changed organization invalidates all existing lines rather than leaving stale values.
-    if (nextHeader.inventoryOrganization !== header.inventoryOrganization) {
-      setLines([])
-    }
-    setHeader(nextHeader)
+    // Every line field (item, destination subinventory or account) plus the header's own Source
+    // Subinventory are organization-scoped, so a changed organization invalidates all existing
+    // lines and clears the selected Source rather than leaving stale values.
+    const { header: resolvedHeader, shouldClearLines } = applyOrgChange(header, nextHeader)
+    if (shouldClearLines) setLines([])
+    setHeader(resolvedHeader)
   }
 
   function openAddLine() {
