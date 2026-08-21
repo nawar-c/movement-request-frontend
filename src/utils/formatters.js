@@ -25,6 +25,17 @@ export function toDateInputValue(value) {
   return date.toISOString().slice(0, 10)
 }
 
+// LOCAL calendar date (getFullYear/getMonth/getDate), never UTC — toISOString() converts through
+// the UTC offset first, which can shift the reported date backward or forward by a day depending
+// on the browser's timezone and time of day. Extracted from dateRangePresets.js's equivalent
+// private helper so both call sites share one implementation instead of duplicating it.
+export function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function formatCount(value) {
   return typeof value === 'number' ? String(value) : null
 }

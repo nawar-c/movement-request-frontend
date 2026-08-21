@@ -2,7 +2,10 @@ export function validateHeader(header) {
   const errors = {}
   if (!header.inventoryOrganization) errors.inventoryOrganization = 'Inventory Organization is required.'
   if (!header.requiredDate) errors.requiredDate = 'Required Date is required.'
-  if (!header.costCenter) errors.costCenter = 'Cost Center is required.'
+  // Cost Center is no longer a header form field the user can fix here — Create blocks entirely
+  // before this form is reachable when the authenticated user has no configured Cost Center (see
+  // MovementRequestCreatePage.jsx), and Edit only ever shows an existing request's already-resolved
+  // snapshot. A field-level error for it would have nowhere left to render.
   return errors
 }
 

@@ -1,6 +1,4 @@
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
-import { LookupCombobox } from '../common/LookupCombobox.jsx'
-import { referenceApi } from '../../api/referenceApi.js'
 import { useOrganizations } from '../../hooks/useReferenceData.js'
 
 export function MovementRequestHeaderForm({ header, onChange, errors = {}, disabled }) {
@@ -11,14 +9,6 @@ export function MovementRequestHeaderForm({ header, onChange, errors = {}, disab
 
   function set(field, value) {
     onChange({ ...header, [field]: value })
-  }
-
-  function handleCostCenterSelect(costCenter) {
-    onChange({
-      ...header,
-      costCenter: costCenter ? costCenter.code : null,
-      costCenterLabel: costCenter ? `${costCenter.code} — ${costCenter.name}` : '',
-    })
   }
 
   return (
@@ -56,25 +46,15 @@ export function MovementRequestHeaderForm({ header, onChange, errors = {}, disab
       </div>
 
       <div className="form-field">
-        <label className="form-label">
-          Cost Center<span className="form-label__required">*</span>
-        </label>
-        <LookupCombobox
-          displayLabel={header.costCenterLabel}
-          onSearch={async (term) => ({ items: await referenceApi.searchCostCenters(term), hasMore: false })}
-          onSelect={handleCostCenterSelect}
-          renderOption={(cc) => (
-            <>
-              <span className="combobox__option-primary">{cc.code}</span>
-              <span className="combobox__option-secondary">{cc.name}</span>
-            </>
-          )}
-          getOptionKey={(cc) => cc.code}
-          placeholder="Search cost center by code or name..."
-          disabled={disabled}
-          hasError={Boolean(errors.costCenter)}
+        <label className="form-label">Cost Center</label>
+        <input
+          type="text"
+          className="form-input"
+          value={header.costCenter || ''}
+          disabled
+          readOnly
+          title="Cost Center comes from your configured profile and cannot be changed here."
         />
-        {errors.costCenter ? <div className="form-error">{errors.costCenter}</div> : null}
       </div>
 
       <div className="form-field form-field--span-3">

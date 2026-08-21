@@ -4,21 +4,21 @@ import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { MovementRequestHeaderForm } from '../components/movement-request/MovementRequestHeaderForm.jsx'
 import { MovementRequestLinesTable } from '../components/movement-request/MovementRequestLinesTable.jsx'
 import { LineEditDrawer } from '../components/movement-request/LineEditDrawer.jsx'
-import { InlineError } from '../components/common/States.jsx'
+import { InlineError, ErrorState } from '../components/common/States.jsx'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { validateHeader } from '../utils/validation.js'
+import { buildInitialHeader, isCostCenterMissing } from '../utils/movementRequestHeader.js'
+import { useAuth } from '../auth/useAuth.js'
 
-const EMPTY_HEADER = {
-  inventoryOrganization: null,
-  requiredDate: '',
-  description: '',
-  costCenter: null,
-  costCenterLabel: '',
-}
+// Exact wording matches the backend's USER_COST_CENTER_NOT_CONFIGURED message (see
+// resolveCreateCostCenter in movementRequest.service.js) — this is the client-side pre-check for
+// the same condition, not a different message for the same problem.
+const COST_CENTER_NOT_CONFIGURED_MESSAGE = 'Your Cost Center is not configured. Please contact the administrator.'
 
 export function MovementRequestCreatePage() {
   const navigate = useNavigate()
-  const [header, setHeader] = useState(EMPTY_HEADER)
+  const { user } = useAuth()
+  const [header, setHeader] = useState(() => buildInitialHeader(user))
   const [lines, setLines] = useState([])
   const [errors, setErrors] = useState({})
   const [editingLineIndex, setEditingLineIndex] = useState(null)
@@ -80,6 +80,25 @@ export function MovementRequestCreatePage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Blocks the entire create flow rather than letting the user build out lines that could never be
+  // saved — the backend would reject this the same way (409 USER_COST_CENTER_NOT_CONFIGURED) but
+  // failing this early, before any line work is invested, is the better UX.
+  if (isCostCenterMissing(user)) {
+    return (
+      <div>
+        <PageHeader
+          title="New Movement Request"
+          actions={
+            <Link to="/movement-requests" className="btn">
+              Back to List
+            </Link>
+          }
+        />
+        <ErrorState title="Cost Center Not Configured" message={COST_CENTER_NOT_CONFIGURED_MESSAGE} />
+      </div>
+    )
   }
 
   return (

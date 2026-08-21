@@ -1,3 +1,5 @@
+import { toLocalDateInputValue } from './formatters.js'
+
 export const DATE_PRESETS = [
   { value: 'last30', label: 'Last 30 Days' },
   { value: 'last90', label: 'Last 90 Days' },
@@ -7,15 +9,11 @@ export const DATE_PRESETS = [
 
 export const DEFAULT_DATE_PRESET = 'allTime'
 
-// Formats using the browser's LOCAL calendar date, not toISOString()'s UTC conversion — the latter
-// silently shifts the date backward or forward by a day for any timezone ahead of/behind UTC,
-// which is exactly wrong for a human-facing "this quarter starts on the 1st" boundary.
-function toISODate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// LOCAL calendar date, not toISOString()'s UTC conversion — the latter silently shifts the date
+// backward or forward by a day for any timezone ahead of/behind UTC, which is exactly wrong for a
+// human-facing "this quarter starts on the 1st" boundary. Shared with the Movement Request Create
+// page's Required Date default (see formatters.js) rather than duplicated here.
+const toISODate = toLocalDateInputValue
 
 // Resolves a preset into the dateFrom/dateTo shape the backend accepts (YYYY-MM-DD). "All Time"
 // resolves to no bounds at all rather than an arbitrarily old dateFrom.

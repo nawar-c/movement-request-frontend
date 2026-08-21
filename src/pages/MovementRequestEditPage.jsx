@@ -8,27 +8,7 @@ import { LoadingState, ErrorState, InlineError } from '../components/common/Stat
 import { useMovementRequest } from '../hooks/useMovementRequest.js'
 import { movementRequestsApi } from '../api/movementRequestsApi.js'
 import { validateHeader } from '../utils/validation.js'
-import { toDateInputValue } from '../utils/formatters.js'
-
-function toHeaderFormState(mr) {
-  return {
-    inventoryOrganization: mr.inventoryOrganization,
-    requiredDate: toDateInputValue(mr.requiredDate),
-    description: mr.description || '',
-    costCenter: mr.costCenter,
-    // The header response only carries the cost center code, not its name — show the code until
-    // the user searches again (the combobox will surface the full "code — name" label at that point).
-    costCenterLabel: mr.costCenter || '',
-  }
-}
-
-function toLineFormState(line) {
-  return {
-    ...line,
-    clientId: line.id,
-    requiredDate: toDateInputValue(line.requiredDate),
-  }
-}
+import { toEditHeaderFormState as toHeaderFormState, toEditLineFormState as toLineFormState } from '../utils/movementRequestHeader.js'
 
 export function MovementRequestEditPage() {
   const { id } = useParams()
