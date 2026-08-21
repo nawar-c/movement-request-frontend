@@ -18,6 +18,20 @@ export function toNumberOrNull(value) {
 // (resolveHeaderSourceSubinventory), so sending a redundant/possibly-stale line value serves no
 // purpose. requester is likewise no longer sent — the backend's line schema now rejects it outright
 // via .strict() (Phase C removed it from the accepted contract entirely).
+//
+// Phase E4 (final review — corrected): destinationAccount/destinationAccountId ARE still sent.
+// header.destinationAccountId is only resolved ONCE, at create time (or when the organization
+// itself changes on an edit) — it is a permanent snapshot, never retroactively backfilled onto a
+// request created before its organization had a configured default. Real production data (e.g.
+// MR-000039) still has header.destinationAccountId = null with a real, historically-stored
+// destinationAccountId on its Issue line. Since the Edit page always resends the full `lines` array
+// on Save, omitting these fields here would make resolveAndValidateLines resolve
+// `header.destinationAccountId ?? line.destinationAccountId` to nothing at all for such a request —
+// blocking an unrelated Save with "destinationAccountId is required for Issue lines", not silent
+// data loss, but a real regression. LineEditDrawer.jsx is still the only writer of these two form
+// fields, and only ever from a trusted source: the line's own preserved historical snapshot
+// (untouched selection) or the resolved value from the USER-safe reference endpoint
+// (freshly (re-)selected item) — never free text, never a manual picker.
 export function serializeLineForApi(line) {
   const quantity = toNumberOrNull(line.requestedQuantity)
   const secondaryQuantity = toNumberOrNull(line.secondaryRequestedQuantity)

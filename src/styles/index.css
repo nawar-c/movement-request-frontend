@@ -384,6 +384,20 @@ a {
   justify-content: flex-end;
 }
 
+/* Phase E4: MR Create/Edit's main Save/Cancel row only — NOT applied to .row-actions generally
+   (table row Edit/Remove buttons must stay exactly where they are). Pins the action row to the
+   bottom of the viewport as the page scrolls, so a long line list can't push Save/Cancel below the
+   fold on a laptop-height screen. Normal document scrolling is unaffected — this is a sticky
+   position within the page's own scroll, not a fixed overlay. */
+.mr-form-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg);
+  padding: 12px 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border);
+}
+
 /* Status badge */
 .status-badge {
   display: inline-flex;
@@ -546,6 +560,12 @@ a {
   box-shadow: var(--shadow-md);
   width: 100%;
   max-width: 460px;
+  /* Phase E4: constrained to the viewport (minus the overlay's own 20px top+bottom padding) so a
+     long modal (e.g. Admin Edit User) can never grow past the screen with no way to reach its
+     footer — the flex column below turns the body into the one scrolling region instead. */
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
 }
 
 .modal__header {
@@ -563,6 +583,13 @@ a {
   padding: 20px;
   font-size: 13px;
   color: var(--color-text-muted);
+  /* Phase E4: the body is the only part of the modal that scrolls — header stays visible, and any
+     footer rendered via the `footer` prop stays reachable without the page behind the modal ever
+     needing to scroll. min-height: 0 overrides flexbox's default min-height:auto, which would
+     otherwise let this item overflow its flex parent instead of actually scrolling. */
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .modal__footer {
@@ -571,6 +598,22 @@ a {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Phase E4 final review: CreateUserModal/EditUserModal/ResetPasswordModal/SetDefaultAccountModal
+   (and ConfirmDialog) all render their Save/Cancel row as a `.modal__footer` nested INSIDE
+   `.modal__body`'s own children, not via Modal's `footer` prop — so without this rule, a long form
+   only gets it reachable via a scroll within the body, not pinned at the bottom the way this
+   requirement calls for. Scoped to exactly this nested case (never the `footer`-prop case above,
+   which is already a sibling of `.modal__body` and needs no sticky treatment) and to nothing outside
+   a modal — `.row-actions`/`.mr-form-actions` are untouched. No markup change: every one of these
+   call sites already reuses this same shared class name for its action row. Each caller's own inline
+   style (e.g. `borderTop: 'none'`) still wins for padding/border, exactly as before — only
+   position/background are added here. */
+.modal__body .modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
 }
 
 .drawer-overlay {

@@ -136,7 +136,7 @@ export function MovementRequestEditPage() {
         onRemove={handleRemoveLine}
       />
 
-      <div className="row-actions" style={{ justifyContent: 'flex-start' }}>
+      <div className="row-actions mr-form-actions" style={{ justifyContent: 'flex-start' }}>
         <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
         </button>

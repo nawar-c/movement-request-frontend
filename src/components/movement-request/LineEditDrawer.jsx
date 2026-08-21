@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ItemSearchCombobox } from '../common/ItemSearchCombobox.jsx'
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
-import { LookupCombobox } from '../common/LookupCombobox.jsx'
-import { useUoms, useDestinationSubinventories, useReasons } from '../../hooks/useReferenceData.js'
+import { useUoms, useDestinationSubinventories, useReasons, useOrganizationDefaultAccount } from '../../hooks/useReferenceData.js'
 import { referenceApi } from '../../api/referenceApi.js'
 import {
   ZERO_VALID_UOM_MESSAGE,
@@ -14,6 +13,7 @@ import {
   buildItemInactiveMessage,
   buildStaleUomMessage,
 } from '../../utils/lineItemUom.js'
+import { DEFAULT_ACCOUNT_NOT_CONFIGURED_MESSAGE, resolveDestinationAccountDisplay } from '../../utils/lineDestinationAccount.js'
 
 const ISSUE_TRANSACTION_TYPE_ID = 63
 const TRANSFER_TRANSACTION_TYPE_ID = 64
@@ -38,7 +38,6 @@ function buildInitialForm(initialLine, headerDefaults) {
     destinationSubinventory: '',
     destinationAccount: '',
     destinationAccountId: '',
-    destinationAccountLabel: '',
     reason: '',
     reference: '',
     secondaryRequestedQuantity: '',
@@ -58,6 +57,12 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
   const [validUoms, setValidUoms] = useState([])
   const [resolvingItem, setResolvingItem] = useState(Boolean(initialLine))
   const [itemResolutionError, setItemResolutionError] = useState(null)
+  // Phase E4 final review: counts how many times the user has (re-)picked an item via
+  // handleItemSelect this session — 0 means "still whatever initialLine loaded with, never
+  // touched". Used to decide whether the Destination Account shown/sent for an Issue line should
+  // be the line's own preserved historical snapshot (untouched) or the freshly resolved
+  // organization default (touched) — see the effect and accountDisplay below.
+  const [selectionVersion, setSelectionVersion] = useState(0)
 
   // Secondary UOM (line.secondaryUom / line.secondaryRequestedQuantity) is Oracle's own separate
   // dual-quantity-tracking payload concept (SecondaryUOMCode/SecondaryRequestedQuantity) — not yet
@@ -70,6 +75,38 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
   const isIssue = form.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID
   const isTransfer = form.transactionTypeId === TRANSFER_TRANSACTION_TYPE_ID
+
+  // Phase E4: Issue-line Destination Account is read-only, resolved from the organization's
+  // configured default via the USER-safe reference endpoint — never manually entered. Only fetched
+  // for an Issue line; a Transfer (or not-yet-determined) line skips the request entirely.
+  const defaultAccount = useOrganizationDefaultAccount(isIssue ? organizationCode : null)
+
+  // Phase E4 final review: an untouched historical Issue line (selectionVersion === 0) keeps its
+  // own preserved snapshot as the source of truth for display — NOT the live lookup, which may
+  // differ if an admin changed the organization's configured default since this line was created,
+  // or may even be "not configured" if that default was later removed entirely. Only a freshly
+  // (re-)selected item (selectionVersion > 0) shows/adopts the live resolution. Either way this
+  // reuses the same resolveDestinationAccountDisplay shape ({ destinationAccount, combinationCode }).
+  const isUntouchedHistoricalAccount = selectionVersion === 0 && Boolean(form.destinationAccountId || form.destinationAccount)
+  const accountDisplay = resolveDestinationAccountDisplay(
+    isUntouchedHistoricalAccount
+      ? { destinationAccount: form.destinationAccountId, combinationCode: form.destinationAccount }
+      : defaultAccount.data,
+  )
+
+  // Applies the freshly resolved organization default onto the line's own write state — but only
+  // after a real (re-)selection this session (selectionVersion > 0). A historical line that hasn't
+  // been touched never has its preserved destinationAccountId/destinationAccount overwritten just
+  // because the drawer happened to re-fetch the organization's current default in the background.
+  useEffect(() => {
+    if (!isIssue || selectionVersion === 0) return
+    if (defaultAccount.loading || !defaultAccount.data) return
+    setForm((prev) => ({
+      ...prev,
+      destinationAccountId: defaultAccount.data.destinationAccount,
+      destinationAccount: defaultAccount.data.combinationCode || defaultAccount.data.destinationAccount,
+    }))
+  }, [isIssue, selectionVersion, defaultAccount.loading, defaultAccount.data])
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -134,9 +171,12 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
         transactionType: null,
         transactionTypeId: null,
         itemChargeableFlag: null,
+        destinationAccount: '',
+        destinationAccountId: '',
       }))
       setValidUoms([])
       setItemResolutionError(null)
+      setSelectionVersion((v) => v + 1)
       setErrors((prev) => {
         const next = { ...prev }
         delete next.uom
@@ -148,9 +188,17 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
     setItemResolutionError(null)
 
     if (!isItemActive(item)) {
-      setForm((prev) => ({ ...prev, itemNumber: item.itemNumber, itemDescription: item.description, uom: '' }))
+      setForm((prev) => ({
+        ...prev,
+        itemNumber: item.itemNumber,
+        itemDescription: item.description,
+        uom: '',
+        destinationAccount: '',
+        destinationAccountId: '',
+      }))
       setValidUoms([])
       setItemResolutionError(buildItemInactiveMessage(item.itemNumber))
+      setSelectionVersion((v) => v + 1)
       return
     }
 
@@ -167,33 +215,21 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
       transactionType: item.transactionType || null,
       transactionTypeId: item.transactionTypeId || null,
       itemChargeableFlag: item.chargeableFlag || null,
-      // Destination fields belong to a specific transaction type — clear whichever no longer applies.
+      // Destination Subinventory belongs to Transfer lines only. Destination Account belongs to
+      // Issue lines only and is never carried over from a prior item — when the newly selected item
+      // IS Issue, the sync effect above fills it in from the resolved organization default once
+      // that fetch completes (selectionVersion, bumped below, is what makes that effect apply).
       destinationSubinventory: item.transactionTypeId === TRANSFER_TRANSACTION_TYPE_ID ? prev.destinationSubinventory : '',
       destinationAccount: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccount : '',
       destinationAccountId: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccountId : '',
-      destinationAccountLabel: item.transactionTypeId === ISSUE_TRANSACTION_TYPE_ID ? prev.destinationAccountLabel : '',
     }))
+    setSelectionVersion((v) => v + 1)
     setErrors((prev) => {
       const next = { ...prev }
       delete next.uom
       delete next.itemNumber
       return next
     })
-  }
-
-  function handleDestinationAccountSelect(account) {
-    setForm((prev) => ({
-      ...prev,
-      destinationAccountId: account ? account.oracleCodeCombinationId : '',
-      destinationAccount: account ? account.combinationCode : '',
-      destinationAccountLabel: account ? account.combinationCode : '',
-    }))
-  }
-
-  // Destination accounts are not organization-scoped on the backend and the full set (~7,771 rows)
-  // is searched and paginated server-side — never fetched or filtered client-side.
-  function searchDestinationAccounts(term, { offset } = {}) {
-    return referenceApi.searchDestinationAccounts(term, { offset })
   }
 
   function validate() {
@@ -215,8 +251,18 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
     if (form.itemNumber && !form.transactionTypeId) {
       nextErrors.itemNumber = 'This item has no derived transaction type. Try re-selecting it.'
     }
-    if (isIssue && !form.destinationAccountId) {
-      nextErrors.destinationAccount = 'Destination Account is required for Issue lines.'
+    // Phase E4: Destination Account is never user-entered for Issue lines. An untouched historical
+    // line keeps its own preserved snapshot (never blocked by today's live lookup — see
+    // isUntouchedHistoricalAccount above); a freshly (re-)selected item must resolve successfully
+    // from the organization's configured default before the line can be saved at all.
+    if (isIssue && !isUntouchedHistoricalAccount) {
+      if (defaultAccount.notConfigured) {
+        nextErrors.destinationAccount = DEFAULT_ACCOUNT_NOT_CONFIGURED_MESSAGE
+      } else if (defaultAccount.error) {
+        nextErrors.destinationAccount = 'Unable to verify the configured Destination Account right now. Please try again.'
+      } else if (!defaultAccount.data) {
+        nextErrors.destinationAccount = 'Destination Account is still being verified. Please wait.'
+      }
     }
     if (isTransfer && !form.destinationSubinventory) {
       nextErrors.destinationSubinventory = 'Destination Subinventory is required for Transfer lines.'
@@ -227,6 +273,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
   function handleSave() {
     if (resolvingItem) return
+    if (isIssue && !isUntouchedHistoricalAccount && defaultAccount.loading) return
     if (!validate()) return
     onSave(form)
   }
@@ -359,22 +406,21 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
                 <label className="form-label">
                   Destination Account<span className="form-label__required">*</span>
                 </label>
-                <LookupCombobox
-                  displayLabel={form.destinationAccountLabel}
-                  onSearch={searchDestinationAccounts}
-                  onSelect={handleDestinationAccountSelect}
-                  renderOption={(a) => (
-                    <>
-                      <span className="combobox__option-primary">{a.combinationCode}</span>
-                      {a.description && a.description !== a.combinationCode ? (
-                        <span className="combobox__option-secondary">{a.description}</span>
-                      ) : null}
-                    </>
-                  )}
-                  getOptionKey={(a) => a.id}
-                  placeholder="Search destination account..."
-                  hasError={Boolean(errors.destinationAccount)}
+                <input
+                  type="text"
+                  className={`form-input${errors.destinationAccount ? ' has-error' : ''}`}
+                  value={
+                    !isUntouchedHistoricalAccount && defaultAccount.loading
+                      ? 'Loading configured account...'
+                      : accountDisplay.primary
+                  }
+                  disabled
+                  readOnly
+                  title="Resolved automatically from the Inventory Organization's configured default Destination Account — cannot be changed here."
                 />
+                {(isUntouchedHistoricalAccount || !defaultAccount.loading) && accountDisplay.secondaryCcid ? (
+                  <div className="form-hint">CCID: {accountDisplay.secondaryCcid}</div>
+                ) : null}
                 {errors.destinationAccount ? <div className="form-error">{errors.destinationAccount}</div> : null}
               </div>
             ) : (
@@ -463,8 +509,13 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
           <button type="button" className="btn" onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleSave} disabled={resolvingItem}>
-            {resolvingItem ? 'Verifying item...' : 'Save Line'}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={resolvingItem || (isIssue && !isUntouchedHistoricalAccount && defaultAccount.loading)}
+          >
+            {resolvingItem || (isIssue && !isUntouchedHistoricalAccount && defaultAccount.loading) ? 'Verifying...' : 'Save Line'}
           </button>
         </div>
       </div>

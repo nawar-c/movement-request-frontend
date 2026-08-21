@@ -154,3 +154,41 @@ export function useDestinationSubinventoriesByOrganizations(organizationCodes) {
 
   return state
 }
+
+// Phase E4: Issue-line Destination Account, read-only display. `notConfigured` is a distinct
+// state from `error` — a 404 DEFAULT_DESTINATION_ACCOUNT_NOT_CONFIGURED from the USER-safe
+// reference endpoint (see referenceApi.getOrganizationDefaultAccount) is an expected, business-safe
+// outcome the caller must show a specific message for, not a generic fetch failure. Passing a
+// falsy organizationCode (e.g. the line isn't Issue, or no organization is selected yet) skips the
+// fetch entirely and resets to the empty state.
+export function useOrganizationDefaultAccount(organizationCode) {
+  const [state, setState] = useState({ data: null, loading: Boolean(organizationCode), notConfigured: false, error: null })
+
+  useEffect(() => {
+    if (!organizationCode) {
+      setState({ data: null, loading: false, notConfigured: false, error: null })
+      return
+    }
+    let cancelled = false
+    setState({ data: null, loading: true, notConfigured: false, error: null })
+    referenceApi
+      .getOrganizationDefaultAccount(organizationCode)
+      .then((data) => {
+        if (cancelled) return
+        setState({ data, loading: false, notConfigured: false, error: null })
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err.code === 'DEFAULT_DESTINATION_ACCOUNT_NOT_CONFIGURED') {
+          setState({ data: null, loading: false, notConfigured: true, error: null })
+        } else {
+          setState({ data: null, loading: false, notConfigured: false, error: err })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [organizationCode])
+
+  return state
+}
