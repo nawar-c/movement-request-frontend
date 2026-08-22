@@ -217,13 +217,13 @@ describe('J — out-of-range page after a mutation/filter change is corrected, n
 // K — Preservation of existing Admin Users functionality (source-structure check)
 // ---------------------------------------------------------------------------------------------
 describe('K — existing Admin Users actions/behavior are preserved', () => {
-  test('Create User, Edit, Enable/Disable, Reset Password, Sync Employee, Sync Employee Information are all still present', () => {
+  test('Create User, Edit, Enable/Disable, Reset Password, Sync Employee, Sync Employee Information are all still present (Enable/Disable/Reset Password/Sync Employee moved from direct onClick buttons into the Phase G1C RowActionMenu\'s onSelect items - see adminUsersTablePhaseG1C.test.js for the detailed action-menu coverage)', () => {
     const source = pageSource()
     assert.match(source, /\+ New User/)
     assert.match(source, /onClick=\{\(\) => setEditUser\(u\)\}/)
-    assert.match(source, /onClick=\{\(\) => handleToggleActive\(u\)\}/)
-    assert.match(source, /onClick=\{\(\) => setResetUser\(u\)\}/)
-    assert.match(source, /onClick=\{\(\) => handleSyncEmployee\(u\)\}/)
+    assert.match(source, /onSelect: \(\) => handleToggleActive\(u\)/)
+    assert.match(source, /onSelect: \(\) => setResetUser\(u\)/)
+    assert.match(source, /onSelect: \(\) => handleSyncEmployee\(u\)/)
     assert.match(source, /Sync Employee Information/)
   })
 
@@ -235,10 +235,10 @@ describe('K — existing Admin Users actions/behavior are preserved', () => {
     assert.match(source, /<DestinationSubinventoryPicker/)
   })
 
-  test('Role display/edit and Active/inactive columns are still rendered per row', () => {
+  test('Role and Active are still rendered per row (Active\'s exact presentation was intentionally changed to a status-badge in Phase G1C - see adminUsersTablePhaseG1C.test.js)', () => {
     const source = pageSource()
     assert.match(source, /<td>\{u\.role\}<\/td>/)
-    assert.match(source, /<td>\{u\.isActive \? 'Yes' : 'No'\}<\/td>/)
+    assert.match(source, /u\.isActive \? 'Active' : 'Inactive'/)
   })
 
   test('the Phase E4 Modal component (with its scrolling/sticky-footer fix) is still used unmodified by Create/Edit/Reset Password - no local re-implementation', () => {

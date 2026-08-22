@@ -3,6 +3,7 @@ import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { Modal } from '../components/common/Modal.jsx'
 import { LookupCombobox } from '../components/common/LookupCombobox.jsx'
 import { PaginationBar } from '../components/dashboard/PaginationBar.jsx'
+import { RowActionMenu } from '../components/common/RowActionMenu.jsx'
 import { LoadingState, ErrorState, EmptyState, InlineError, InlineNotice } from '../components/common/States.jsx'
 import { adminUsersApi } from '../api/adminUsersApi.js'
 import { referenceApi } from '../api/referenceApi.js'
@@ -46,15 +47,24 @@ function syncResultMessage(result) {
   return 'Unable to synchronize employee information.'
 }
 
-// Shared display for Oracle-synchronized master data (Employee Name, Email) — same visual
-// language in both the Users list and the read-only Edit User fields.
-function SyncedFieldValue({ value }) {
-  if (!value) {
+// Consolidated Employee cell (Phase G1C): Employee Name (primary) + Email (secondary) in one column,
+// sharing a single "Synced from Oracle HCM" caption instead of repeating it once per field — both
+// values are always written together by the same Oracle HCM sync operation (setEmployeeIdentity), so
+// one caption accurately describes both. employeeName null means genuinely never synchronized (or a
+// sync that hasn't resolved yet) - email is never independently editable/settable outside that same
+// sync, so a present email always implies a present employeeName, never the reverse.
+function EmployeeCell({ employeeName, email }) {
+  if (!employeeName) {
     return <span className="text-faint">Not synchronized</span>
   }
   return (
     <div>
-      <div>{value}</div>
+      <div>{employeeName}</div>
+      {email ? (
+        <div className="text-muted" style={{ fontSize: 12 }}>
+          {email}
+        </div>
+      ) : null}
       <div className="text-faint" style={{ fontSize: 11 }}>
         Synced from Oracle HCM
       </div>
@@ -286,48 +296,68 @@ export function AdminUsersPage() {
                 <thead>
                   <tr>
                     <th>Username / Employee ID</th>
-                    <th>Employee Name</th>
-                    <th>Email</th>
+                    <th>Employee</th>
                     <th>Cost Center</th>
                     <th>Role</th>
-                    <th>Is Nurse</th>
                     <th>Active</th>
-                    <th>Must Change Password</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.id}>
-                      <td>{u.username}</td>
-                      <td><SyncedFieldValue value={u.employeeName} /></td>
-                      <td><SyncedFieldValue value={u.email} /></td>
+                      <td>
+                        <div>{u.username}</div>
+                        {/* mustChangePassword/isNurse are no longer their own columns (Phase G1C) - each
+                            renders as a small badge here, only when true, so the common case (neither
+                            flag set) stays a single plain line. Is Nurse wasn't named in the approved
+                            6-column design but was an existing visible column before this phase; kept
+                            here as a compact badge rather than dropped, so no data is silently lost -
+                            flagged for review in the implementation report. */}
+                        {u.mustChangePassword || u.isNurse ? (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                            {u.mustChangePassword ? (
+                              <span className="status-badge status-badge--pending">Must change password</span>
+                            ) : null}
+                            {u.isNurse ? <span className="status-badge status-badge--muted">Nurse</span> : null}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <EmployeeCell employeeName={u.employeeName} email={u.email} />
+                      </td>
                       <td>
                         {u.costCenter ? u.costCenter : <span className="text-faint">Not configured</span>}
                       </td>
                       <td>{u.role}</td>
-                      <td>{u.isNurse ? 'Yes' : 'No'}</td>
-                      <td>{u.isActive ? 'Yes' : 'No'}</td>
-                      <td>{u.mustChangePassword ? 'Yes' : 'No'}</td>
+                      <td>
+                        <span className={`status-badge ${u.isActive ? 'status-badge--ready' : 'status-badge--muted'}`}>
+                          {u.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
                       <td>
                         <div className="row-actions">
                           <button type="button" className="btn btn-sm" onClick={() => setEditUser(u)}>
                             Edit
                           </button>
-                          <button type="button" className="btn btn-sm" onClick={() => handleToggleActive(u)}>
-                            {u.isActive ? 'Disable' : 'Enable'}
-                          </button>
-                          <button type="button" className="btn btn-sm" onClick={() => setResetUser(u)}>
-                            Reset Password
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            onClick={() => handleSyncEmployee(u)}
-                            disabled={syncingId === u.id}
-                          >
-                            {syncingId === u.id ? 'Syncing...' : 'Sync Employee'}
-                          </button>
+                          <RowActionMenu
+                            label={`More actions for ${u.username}`}
+                            items={[
+                              {
+                                label: u.isActive ? 'Disable' : 'Enable',
+                                onSelect: () => handleToggleActive(u),
+                              },
+                              {
+                                label: 'Reset Password',
+                                onSelect: () => setResetUser(u),
+                              },
+                              {
+                                label: syncingId === u.id ? 'Syncing...' : 'Sync Employee',
+                                onSelect: () => handleSyncEmployee(u),
+                                disabled: syncingId === u.id,
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>
