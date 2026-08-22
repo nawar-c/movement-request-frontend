@@ -1,12 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { Modal } from '../components/common/Modal.jsx'
 import { LookupCombobox } from '../components/common/LookupCombobox.jsx'
+import { PaginationBar } from '../components/dashboard/PaginationBar.jsx'
 import { LoadingState, ErrorState, EmptyState, InlineError, InlineNotice } from '../components/common/States.jsx'
 import { adminUsersApi } from '../api/adminUsersApi.js'
 import { referenceApi } from '../api/referenceApi.js'
 import { useOrganizations, useDestinationSubinventoriesByOrganizations } from '../hooks/useReferenceData.js'
 import { PASSWORD_POLICY_HINT, validatePassword } from '../utils/validation.js'
+import { ADMIN_USERS_PAGE_SIZE, buildListUsersParams, clampPageToTotal } from '../utils/adminUsersList.js'
+
+const ROLE_FILTER_OPTIONS = [
+  { value: '', label: 'All roles' },
+  { value: 'USER', label: 'USER' },
+  { value: 'ADMIN', label: 'ADMIN' },
+]
+
+const ACTIVE_FILTER_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
+]
+
+// Same 300ms debounce technique already used by LookupCombobox for search-as-you-type - applied
+// here so search (a server round trip, unlike Approval Rules'/Movement Requests' purely client-side
+// search boxes) doesn't fire a request on every keystroke.
+const SEARCH_DEBOUNCE_MS = 300
 
 const ROLE_OPTIONS = ['USER', 'ADMIN']
 
@@ -45,9 +64,18 @@ function SyncedFieldValue({ value }) {
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState([])
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(ADMIN_USERS_PAGE_SIZE)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loadError, setLoadError] = useState(null)
   const [rowError, setRowError] = useState(null)
+
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [role, setRole] = useState('')
+  const [isActive, setIsActive] = useState('')
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState(null)
@@ -60,17 +88,66 @@ export function AdminUsersPage() {
   const [bulkResult, setBulkResult] = useState(null)
   const [bulkError, setBulkError] = useState(null)
 
-  function load() {
+  // Debounces the raw search box text into the committed `search` value that actually drives a
+  // request — the same 300ms technique LookupCombobox already uses, applied to a plain text input
+  // instead of a dropdown-suggestion combobox.
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timeout)
+  }, [searchInput])
+
+  // Race guard for out-of-order responses (e.g. a fast filter change followed by another before the
+  // first request resolves) - same requestId-ref idiom already used by LookupCombobox,
+  // ItemSearchCombobox, and the Dashboard's useReportResource.
+  const requestIdRef = useRef(0)
+
+  // requestedPage defaults to the current `page` state so a plain reload (mutation refresh) re-fetches
+  // in place; filter changes and explicit page navigation both pass it explicitly instead of relying
+  // on `page` state, which would otherwise be stale inside this render's closure.
+  function load(requestedPage = page) {
+    const currentRequest = ++requestIdRef.current
     setLoading(true)
     setLoadError(null)
-    adminUsersApi
-      .list()
-      .then((items) => setUsers(items))
-      .catch((err) => setLoadError(err))
-      .finally(() => setLoading(false))
+    const params = buildListUsersParams({ page: requestedPage, pageSize, search, role, isActive })
+    return adminUsersApi
+      .list(params)
+      .then((result) => {
+        if (currentRequest !== requestIdRef.current) return
+        // The page just requested may no longer exist against the freshly returned total (a mutation
+        // that shrank the result set, or a filter narrowing it) - if so, re-request the last valid
+        // page instead of rendering an empty, stranded page.
+        const validPage = clampPageToTotal({ page: result.page, pageSize: result.pageSize, total: result.total })
+        if (validPage !== result.page) {
+          load(validPage)
+          return
+        }
+        setUsers(result.items)
+        setPage(result.page)
+        setTotal(result.total)
+        setHasLoadedOnce(true)
+      })
+      .catch((err) => {
+        if (currentRequest !== requestIdRef.current) return
+        setLoadError(err)
+      })
+      .finally(() => {
+        if (currentRequest !== requestIdRef.current) return
+        setLoading(false)
+      })
   }
 
-  useEffect(load, [])
+  // Any filter change resets to page 1 and re-fetches - mirrors the Dashboard's own
+  // "shared-filter change invalidates whatever page a paginated table was sitting on" effect
+  // (DashboardPage.jsx). pageSize has no UI control today (fixed at ADMIN_USERS_PAGE_SIZE) but is
+  // included here so the reset behavior is already correct if one is ever added.
+  useEffect(() => {
+    load(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, role, isActive, pageSize])
+
+  function handlePageChange(nextPage) {
+    load(nextPage)
+  }
 
   async function handleToggleActive(u) {
     setRowError(null)
@@ -111,8 +188,14 @@ export function AdminUsersPage() {
     }
   }
 
-  if (loading) return <LoadingState label="Loading users..." />
-  if (loadError) return <ErrorState message={loadError.message} onRetry={load} />
+  // Only the true first load (nothing rendered yet) replaces the whole page - a later reload
+  // (search/filter/page change, or a mutation refresh) must keep the toolbar and table mounted so a
+  // debounced search request firing mid-keystroke never unmounts the input the admin is typing into.
+  // Mirrors the Dashboard's own hasLoadedOnce convention (useReportResource/AttentionWorklist).
+  if (loading && !hasLoadedOnce) return <LoadingState label="Loading users..." />
+  if (loadError && !hasLoadedOnce) return <ErrorState message={loadError.message} onRetry={() => load()} />
+
+  const hasActiveFilter = Boolean(search || role || isActive)
 
   return (
     <div>
@@ -133,6 +216,7 @@ export function AdminUsersPage() {
 
       <InlineError message={rowError?.message} />
       <InlineError message={bulkError?.message} />
+      {hasLoadedOnce ? <InlineError message={loadError?.message} /> : null}
       {syncNotice ? (
         <InlineNotice>
           {syncNotice.username}: {syncNotice.text}
@@ -166,9 +250,36 @@ export function AdminUsersPage() {
       ) : null}
 
       <div className="card">
-        <div className="card__body" style={{ padding: users.length === 0 ? undefined : 0 }}>
+        <div className="card__body">
+          <div className="toolbar">
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search username, employee name, or email..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
+              {ROLE_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select className="form-select" value={isActive} onChange={(e) => setIsActive(e.target.value)}>
+              {ACTIVE_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-faint" style={{ fontSize: 12 }}>
+              {loading ? 'Loading...' : `${total} user${total === 1 ? '' : 's'}`}
+            </span>
+          </div>
+
           {users.length === 0 ? (
-            <EmptyState title="No users yet" />
+            <EmptyState title={hasActiveFilter ? 'No results match your filters' : 'No users yet'} />
           ) : (
             <div className="table-wrap">
               <table className="data-table">
@@ -225,6 +336,8 @@ export function AdminUsersPage() {
               </table>
             </div>
           )}
+
+          {total > 0 ? <PaginationBar page={page} pageSize={pageSize} total={total} onPageChange={handlePageChange} /> : null}
         </div>
       </div>
 
