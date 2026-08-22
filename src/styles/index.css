@@ -265,6 +265,17 @@ a {
   }
 }
 
+/* Phase G2: .form-grid's own breakpoints above key off VIEWPORT width, which never helps a
+   fixed-width container like .drawer (max-width: 640px) — the drawer stays 640px wide (and its
+   3-column grid stays 3 columns) on any normal desktop/laptop viewport, regardless of how little
+   room that actually leaves per column (measured live: 184px/column, causing real content overflow
+   e.g. Destination Account combination codes). This is a container-driven override, not another
+   viewport breakpoint - scoped to .form-grid--drawer only, so the header form's own .form-grid
+   (sized correctly against its own, wider container) is completely unaffected. */
+.form-grid--drawer {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .form-field {
   display: flex;
   flex-direction: column;

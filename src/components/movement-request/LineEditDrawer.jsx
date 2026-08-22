@@ -290,7 +290,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
 
         <div className="drawer__body">
           <div className="section-divider">Item &amp; Quantity</div>
-          <div className="form-grid">
+          <div className="form-grid form-grid--drawer">
             <div className="form-field form-field--span-2">
               <label className="form-label">
                 Item<span className="form-label__required">*</span>
@@ -379,7 +379,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
           </div>
 
           <div className="section-divider">Source &amp; Destination</div>
-          <div className="form-grid">
+          <div className="form-grid form-grid--drawer">
             {isTransfer ? (
               <div className="form-field">
                 <label className="form-label">
@@ -402,7 +402,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
                 ) : null}
               </div>
             ) : isIssue ? (
-              <div className="form-field">
+              <div className="form-field form-field--span-2">
                 <label className="form-label">
                   Destination Account<span className="form-label__required">*</span>
                 </label>
@@ -432,7 +432,7 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
           </div>
 
           <div className="section-divider">Additional Details</div>
-          <div className="form-grid">
+          <div className="form-grid form-grid--drawer">
             <div className="form-field">
               <label className="form-label">Reason</label>
               <ReferenceSelect
