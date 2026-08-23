@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --color-bg: #f4f6f8;
   --color-surface: #ffffff;
   --color-border: #d8dee4;
@@ -34,6 +35,62 @@
   --chart-3: #6366a8;
   --chart-4: #4c9bc9;
   --chart-5: #7a5a8f;
+
+  /* Phase G4 — additive tokens, values chosen to reproduce the exact existing hardcoded literals
+     byte-for-byte, so light mode is visually unchanged even though these four rgba()/hex uses below
+     (.form-input:focus, .data-table tbody tr:hover, .preset-btn--active, .activity-row--active,
+     .inline-notice, .modal-overlay, .drawer-overlay) now read from tokens instead of repeating the
+     literal in place. --color-primary-rgb exists so translucent primary-tinted overlays can be
+     written as rgba(var(--color-primary-rgb), alpha) and stay in sync with --color-primary
+     automatically — dark mode's primary is a different blue, and previously these four spots would
+     have silently kept using light mode's blue underneath a dark theme. */
+  --color-primary-rgb: 30, 94, 171;
+  --color-warning-border: #f0d9a6;
+  --color-overlay: rgba(17, 24, 32, 0.45);
+  --color-overlay-drawer: rgba(17, 24, 32, 0.4);
+}
+
+/* Phase G4 — dark theme token overrides only. Every component rule in this file already reads
+   color/background/border/shadow exclusively through the tokens above, so this block is the entire
+   dark-mode implementation — no component CSS is duplicated. Values are a deliberately muted,
+   blue-gray "slate" palette (not pure black, not neon) with --color-surface kept lighter than
+   --color-bg so elevation reads the same way it does in light mode (cards visibly lift off the
+   page) without depending on shadows, which barely register on a dark surface. --color-primary is
+   substantially lighter than light mode's for the same reason color choices generally need to
+   invert in luminance direction between themes, not just hue - the original #1e5eab is a dark blue
+   tuned for contrast against white; it would nearly disappear against a dark surface. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #12161c;
+  --color-surface: #1a1f27;
+  --color-border: #2a313c;
+  --color-border-strong: #3b4552;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa4b2;
+  --color-text-faint: #6b7480;
+  --color-primary: #5b9bd9;
+  --color-primary-hover: #79aee2;
+  --color-primary-contrast: #0f1720;
+  --color-danger: #e5867c;
+  --color-danger-bg: #3a2220;
+  --color-danger-border: #5c332e;
+  --color-success-bg: #17301f;
+  --color-success-text: #6cc48a;
+  --color-warning-bg: #332708;
+  --color-warning-text: #e0ad4b;
+  --color-warning-border: #5c4a1f;
+  --color-neutral-bg: #262c34;
+  --color-neutral-text: #aab3bf;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --chart-1: #5b9bd9;
+  --chart-2: #4fb3b3;
+  --chart-3: #8f93d1;
+  --chart-4: #7cc3e8;
+  --chart-5: #b195c9;
+  --color-primary-rgb: 91, 155, 217;
+  --color-overlay: rgba(3, 5, 8, 0.6);
+  --color-overlay-drawer: rgba(3, 5, 8, 0.55);
 }
 
 * {
@@ -327,7 +384,7 @@ a {
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  outline: 2px solid rgba(30, 94, 171, 0.35);
+  outline: 2px solid rgba(var(--color-primary-rgb), 0.35);
   outline-offset: 0;
   border-color: var(--color-primary);
 }
@@ -379,7 +436,7 @@ a {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(30, 94, 171, 0.035);
+  background: rgba(var(--color-primary-rgb), 0.035);
 }
 
 .data-table tbody tr:last-child td {
@@ -492,7 +549,7 @@ a {
 
 .inline-notice {
   background: var(--color-warning-bg);
-  border: 1px solid #f0d9a6;
+  border: 1px solid var(--color-warning-border);
   color: var(--color-warning-text);
   padding: 10px 14px;
   border-radius: var(--radius-sm);
@@ -567,7 +624,7 @@ a {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 32, 0.45);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -640,7 +697,7 @@ a {
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 32, 0.4);
+  background: var(--color-overlay-drawer);
   display: flex;
   justify-content: flex-end;
   z-index: 100;
@@ -800,7 +857,7 @@ a {
 }
 
 .preset-btn--active {
-  background: rgba(30, 94, 171, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -1405,7 +1462,7 @@ a {
 }
 
 .activity-row--active {
-  background: rgba(30, 94, 171, 0.08);
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .activity-row__label {

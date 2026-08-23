@@ -4,6 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Movement Requests</title>
+    <!--
+      Phase G4 anti-flash: applies the effective theme to <html data-theme="..."> before the first
+      paint, so the page never flashes light before switching to dark (or vice versa) on load.
+      Deliberately a plain synchronous inline script (no type="module", no src) - a module or
+      deferred script runs after HTML parsing completes, which can still allow a paint first; this
+      one blocks parsing at exactly this point in <head>, before any content below it can render.
+      Because it can't import resolveTheme.js (that would make it a module script), it re-implements
+      that file's resolveEffectiveTheme() rule directly - kept to this one small ternary so the two
+      copies are trivially easy to compare, and test/appThemePhaseG4.test.js asserts they agree for
+      every input. THEME_STORAGE_KEY ('mr_theme') is also duplicated here for the same reason.
+    -->
+    <script>
+      (function () {
+        try {
+          var KEY = 'mr_theme';
+          var stored = localStorage.getItem(KEY);
+          var preference = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+          var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var effective = preference === 'dark' ? 'dark' : preference === 'light' ? 'light' : (systemPrefersDark ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', effective);
+        } catch (e) {
+          /* localStorage/matchMedia unavailable - leave data-theme unset, CSS's bare :root (light) applies */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

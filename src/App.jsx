@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { RequireAdmin, RequireAuth, RequireAuthenticated, RequireGuest } from './auth/guards.jsx'
+import { ThemeProvider } from './theme/ThemeContext.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 import { LoginPage } from './pages/LoginPage.jsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx'
@@ -18,38 +19,40 @@ import { AdminOrganizationAccountsPage } from './pages/AdminOrganizationAccounts
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route element={<RequireGuest />}>
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <Routes>
+          <Route element={<RequireGuest />}>
+            <Route path="/login" element={<LoginPage />} />
+          </Route>
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        <Route element={<RequireAuthenticated />}>
-          <Route path="/change-password" element={<ChangePasswordPage />} />
-        </Route>
+          <Route element={<RequireAuthenticated />}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
+          </Route>
 
-        <Route element={<RequireAuth />}>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Navigate to="/movement-requests" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/movement-requests" element={<MovementRequestListPage />} />
-            <Route path="/movement-requests/new" element={<MovementRequestCreatePage />} />
-            <Route path="/movement-requests/:id/edit" element={<MovementRequestEditPage />} />
-            <Route path="/movement-requests/:id" element={<MovementRequestViewPage />} />
+          <Route element={<RequireAuth />}>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<Navigate to="/movement-requests" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/movement-requests" element={<MovementRequestListPage />} />
+              <Route path="/movement-requests/new" element={<MovementRequestCreatePage />} />
+              <Route path="/movement-requests/:id/edit" element={<MovementRequestEditPage />} />
+              <Route path="/movement-requests/:id" element={<MovementRequestViewPage />} />
 
-            <Route element={<RequireAdmin />}>
-              <Route path="/admin/master-data-sync" element={<AdminMasterDataSyncPage />} />
-              <Route path="/admin/users" element={<AdminUsersPage />} />
-              <Route path="/admin/approval-rules" element={<AdminApprovalRulesPage />} />
-              <Route path="/admin/organization-default-accounts" element={<AdminOrganizationAccountsPage />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin/master-data-sync" element={<AdminMasterDataSyncPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/approval-rules" element={<AdminApprovalRulesPage />} />
+                <Route path="/admin/organization-default-accounts" element={<AdminOrganizationAccountsPage />} />
+              </Route>
             </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/movement-requests" replace />} />
-      </Routes>
-    </AuthProvider>
+          <Route path="*" element={<Navigate to="/movement-requests" replace />} />
+        </Routes>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

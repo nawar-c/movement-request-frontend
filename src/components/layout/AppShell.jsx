@@ -1,5 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth.js'
+import { useTheme } from '../../theme/useTheme.js'
+
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
 
 // Movement Requests is a section, not a single route (list/new/view/edit all belong under it) - no
 // `end` prop, so NavLink's default prefix matching keeps the brand active across
@@ -16,6 +23,7 @@ function navLinkClassName({ isActive }) {
 
 export function AppShell() {
   const { user, logout } = useAuth()
+  const { preference, setPreference } = useTheme()
   const isAdmin = user?.role === 'ADMIN'
 
   return (
@@ -46,6 +54,23 @@ export function AppShell() {
           ) : null}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Reuses the Dashboard date-range control's existing .preset-group/.preset-btn pattern
+              (DashboardFilters.jsx) verbatim - already exactly "a compact row of mutually-exclusive
+              option buttons with an obvious active state," so no new CSS architecture was needed for
+              this control. */}
+          <div className="preset-group" role="group" aria-label="Theme">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`preset-btn${preference === opt.value ? ' preset-btn--active' : ''}`}
+                aria-pressed={preference === opt.value}
+                onClick={() => setPreference(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           {user?.username ? (
             <span className="text-muted" style={{ fontSize: 12 }}>
               {user.username}
