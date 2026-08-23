@@ -14,29 +14,10 @@ import { AttentionWorklist } from '../components/dashboard/AttentionWorklist.jsx
 import { MatchingRequestsTable } from '../components/dashboard/MatchingRequestsTable.jsx'
 import { ClockIcon, LayersIcon, CheckCircleIcon, AlertIcon } from '../components/common/icons.jsx'
 import { reportsApi } from '../api/reportsApi.js'
-import { resolveDatePreset, DATE_PRESETS } from '../utils/dateRangePresets.js'
+import { DATE_PRESETS } from '../utils/dateRangePresets.js'
 import { useReportResource } from '../hooks/useReportResource.js'
 import { formatDate } from '../utils/formatters.js'
-
-// Single source of truth for turning the shared filter state into the query shape every reporting
-// endpoint accepts (confirmed identical across dashboard-summary, request-trend,
-// oracle-status-distribution, and line-closure-distribution) — reused by every fetch below so
-// there is exactly one place that serializes filters, not one per endpoint.
-function buildRequestFilters(filters) {
-  const dateRange = filters.customDate
-    ? { dateFrom: filters.customDate, dateTo: filters.customDate }
-    : resolveDatePreset(filters.preset)
-  return {
-    dateFrom: dateRange.dateFrom,
-    dateTo: dateRange.dateTo,
-    applicationStatus: filters.applicationStatus || undefined,
-    oracleStatusCode: filters.oracleStatusCode || undefined,
-    lineClosure: filters.lineClosure || undefined,
-    organizationCode: filters.organizationCode || undefined,
-    sourceSubinventory: filters.sourceSubinventory || undefined,
-    destinationSubinventory: filters.destinationSubinventory || undefined,
-  }
-}
+import { buildRequestFilters } from '../utils/reportFilters.js'
 
 // Dashboard-widget-sized page (the backend default is 25; both new tables are compact worklists,
 // not the general request browser, so a smaller page reads better here).

@@ -207,13 +207,14 @@ describe('14 — no hamburger/collapse navigation was introduced', () => {
 // ---------------------------------------------------------------------------------------------
 // 15 — existing navigation destinations/order remain unchanged
 // ---------------------------------------------------------------------------------------------
-describe('15 — nav destinations and order are unchanged', () => {
-  test('the exact same 6 destinations, in the exact same order, still exist: brand, Dashboard, Users, Approval Rules, Org Accounts, Admin', () => {
+describe('15 — nav destinations and order are unchanged (G5B.1 note: /reports/requests was legitimately inserted after /dashboard; all 6 original destinations keep their exact prior order)', () => {
+  test('the original 6 destinations remain, in their exact original relative order, with exactly one new destination (/reports/requests) inserted right after /dashboard', () => {
     const source = appShellSource()
     const hrefs = Array.from(source.matchAll(/to="([^"]+)"/g)).map((m) => m[1])
     assert.deepEqual(hrefs, [
       '/movement-requests',
       '/dashboard',
+      '/reports/requests',
       '/admin/users',
       '/admin/approval-rules',
       '/admin/organization-default-accounts',

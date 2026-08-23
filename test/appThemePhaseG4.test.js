@@ -417,12 +417,13 @@ describe('P — native control color-scheme', () => {
 // Q — existing G3 navigation structure unchanged
 // ---------------------------------------------------------------------------------------------
 describe('Q — existing G3 navigation structure is unchanged', () => {
-  test('all 6 nav destinations still exist, same order, NavLink still used with the same end/prefix-matching rules', () => {
+  test('all 6 original nav destinations still exist in their original relative order (G5B.1 legitimately inserted /reports/requests after /dashboard), NavLink still used with the same end/prefix-matching rules', () => {
     const source = appShellSource()
     const hrefs = Array.from(source.matchAll(/to="([^"]+)"/g)).map((m) => m[1])
     assert.deepEqual(hrefs, [
       '/movement-requests',
       '/dashboard',
+      '/reports/requests',
       '/admin/users',
       '/admin/approval-rules',
       '/admin/organization-default-accounts',

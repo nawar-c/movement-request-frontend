@@ -36,6 +36,9 @@ export function AppShell() {
           <NavLink to="/dashboard" end className={navLinkClassName}>
             Dashboard
           </NavLink>
+          <NavLink to="/reports/requests" end className={navLinkClassName}>
+            Requests Report
+          </NavLink>
           {isAdmin ? (
             <>
               <NavLink to="/admin/users" end className={navLinkClassName}>

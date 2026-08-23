@@ -7,7 +7,22 @@ import { formatDate } from '../../utils/formatters.js'
 // Only rendered while the Dashboard has an active analytical filter (see DashboardPage) — this is
 // the drill-down surface for "what are the underlying requests behind this selection", not a
 // second general-purpose request browser (that's the existing Movement Requests page).
-export function MatchingRequestsTable({ data, loading, hasLoadedOnce, error, onRetry, onPageChange }) {
+//
+// Phase G5B.1 — title/caption/emptyMessage are now optional overrides (defaulting to the exact
+// original Dashboard copy, so DashboardPage's own usage is byte-for-byte unchanged) so
+// RequestsReportPage.jsx can reuse this exact table/column/pagination implementation with
+// page-appropriate wording instead of duplicating it.
+export function MatchingRequestsTable({
+  data,
+  loading,
+  hasLoadedOnce,
+  error,
+  onRetry,
+  onPageChange,
+  title = 'Matching Requests',
+  caption = 'The underlying requests for the current Dashboard filters.',
+  emptyMessage = 'No requests match the current Dashboard filters.',
+}) {
   const navigate = useNavigate()
   const showSkeleton = loading && !hasLoadedOnce
   const items = data?.items || []
@@ -26,18 +41,18 @@ export function MatchingRequestsTable({ data, loading, hasLoadedOnce, error, onR
   return (
     <div className="card">
       <div className="card__header">
-        <h2 className="card__title">Matching Requests</h2>
+        <h2 className="card__title">{title}</h2>
       </div>
       <div className="card__body">
         <div className="chart-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-          The underlying requests for the current Dashboard filters.
+          {caption}
         </div>
         {showSkeleton ? (
           <div className="skeleton chart-skeleton--table" />
         ) : error && !hasLoadedOnce ? (
           <ChartError message={error.message} onRetry={onRetry} />
         ) : items.length === 0 ? (
-          <ChartEmptyState message="No requests match the current Dashboard filters." />
+          <ChartEmptyState message={emptyMessage} />
         ) : (
           <>
             {error ? (
