@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { DashboardFilters, DEFAULT_FILTERS } from '../components/dashboard/DashboardFilters.jsx'
 import { MatchingRequestsTable } from '../components/dashboard/MatchingRequestsTable.jsx'
+import { LookupCombobox } from '../components/common/LookupCombobox.jsx'
 import { reportsApi } from '../api/reportsApi.js'
+import { adminUsersApi } from '../api/adminUsersApi.js'
 import { buildRequestFilters } from '../utils/reportFilters.js'
+import { formatRequesterLabel, buildRequesterSearchParams, deriveHasMore, mergeRequesterFilter } from '../utils/requesterLookup.js'
 import { useReportResource } from '../hooks/useReportResource.js'
+import { useAuth } from '../auth/useAuth.js'
 
 // Phase G5B.1 — standalone reporting/drill-down page over the existing GET /api/reports/requests
 // endpoint (already used by the Dashboard's own MatchingRequestsTable, just previously only
@@ -19,17 +23,49 @@ import { useReportResource } from '../hooks/useReportResource.js'
 // page sends only the filters the user chose, the same way every other reporting screen already does.
 const REQUESTS_REPORT_PAGE_SIZE = 25
 
+// Phase G5B.2 — LookupCombobox's onSearch(term, { offset }) contract, backed by the existing
+// ADMIN-only adminUsersApi.list (no new endpoint). Pure offset/page math and the isActive-omission
+// decision live in requesterLookup.js so they're independently unit-testable.
+async function searchRequesters(term, { offset }) {
+  const params = buildRequesterSearchParams(term, offset)
+  const result = await adminUsersApi.list(params)
+  return {
+    items: result.items,
+    hasMore: deriveHasMore(result.page, result.pageSize, result.total),
+  }
+}
+
+// Merges the ADMIN-only Requester selection into the existing 8-key reporting filter contract at
+// the call site only - buildRequestFilters/reportFilters.js is never touched, so its output shape
+// (and Dashboard's own use of it) is completely unaffected. createdByUserId is passed via
+// useReportResource's extraArgs (not folded into the requestFilters object itself) specifically so
+// selecting or clearing a requester is tracked as its own refetch trigger, independent of the 8
+// shared filters.
+function fetchRequestsWithRequester(filters, page, pageSize, createdByUserId) {
+  return reportsApi.getRequests(mergeRequesterFilter(filters, createdByUserId), page, pageSize)
+}
+
 export function RequestsReportPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
+
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const requestFilters = buildRequestFilters(filters)
   const [page, setPage] = useState(1)
 
-  const requests = useReportResource(reportsApi.getRequests, requestFilters, {
-    extraArgs: [page, REQUESTS_REPORT_PAGE_SIZE],
+  // Kept entirely separate from `filters` - see the module-level comments above. Only ever set via
+  // LookupCombobox's onSelect (a real selected user object, or null on clear) - never from raw typed
+  // search text (onTermChange is deliberately not wired up), so an abandoned/unselected search can
+  // never leak into the reporting filter.
+  const [requesterId, setRequesterId] = useState('')
+  const [requesterLabel, setRequesterLabel] = useState('')
+
+  const requests = useReportResource(fetchRequestsWithRequester, requestFilters, {
+    extraArgs: [page, REQUESTS_REPORT_PAGE_SIZE, requesterId],
   })
 
-  // Same convention as DashboardPage's own paginated tables - any filter change invalidates
-  // whatever page the table was sitting on.
+  // Same convention as DashboardPage's own paginated tables - any filter change (including the
+  // Requester selection) invalidates whatever page the table was sitting on.
   useEffect(() => {
     setPage(1)
   }, [
@@ -41,6 +77,7 @@ export function RequestsReportPage() {
     requestFilters.organizationCode,
     requestFilters.sourceSubinventory,
     requestFilters.destinationSubinventory,
+    requesterId,
   ])
 
   function handleFilterChange(patch) {
@@ -49,6 +86,13 @@ export function RequestsReportPage() {
 
   function handleReset() {
     setFilters(DEFAULT_FILTERS)
+    setRequesterId('')
+    setRequesterLabel('')
+  }
+
+  function handleSelectRequester(selectedUser) {
+    setRequesterId(selectedUser ? selectedUser.id : '')
+    setRequesterLabel(selectedUser ? formatRequesterLabel(selectedUser) : '')
   }
 
   return (
@@ -64,6 +108,30 @@ export function RequestsReportPage() {
         onReset={handleReset}
         updating={requests.loading && requests.hasLoadedOnce}
       />
+
+      {isAdmin ? (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card__body">
+            <div className="form-field" style={{ maxWidth: 360 }}>
+              <label className="form-label">Requester</label>
+              <LookupCombobox
+                displayLabel={requesterLabel}
+                onSearch={searchRequesters}
+                onSelect={handleSelectRequester}
+                renderOption={(u) => (
+                  <>
+                    <span className="combobox__option-primary">{u.employeeName || u.username}</span>
+                    <span className="combobox__option-secondary">{u.username}</span>
+                  </>
+                )}
+                getOptionKey={(u) => u.id}
+                minChars={3}
+                placeholder="All Requesters — search by name or username..."
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <MatchingRequestsTable
         title="Requests"

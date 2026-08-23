@@ -17,6 +17,10 @@ function buildParams(filters = {}) {
   if (filters.organizationCode) params.organizationCode = filters.organizationCode
   if (filters.sourceSubinventory) params.sourceSubinventory = filters.sourceSubinventory
   if (filters.destinationSubinventory) params.destinationSubinventory = filters.destinationSubinventory
+  // Phase G5B.2 — Requests Report's ADMIN-only Requester filter. Every other caller (Dashboard,
+  // Attention, Activity panels) never puts this key on the filters object they pass in, so this
+  // line is inert for them - confirmed by construction, not by a runtime role check here.
+  if (filters.createdByUserId) params.createdByUserId = filters.createdByUserId
   return params
 }
 
