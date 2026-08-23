@@ -14,6 +14,7 @@ import {
   buildStaleUomMessage,
 } from '../../utils/lineItemUom.js'
 import { DEFAULT_ACCOUNT_NOT_CONFIGURED_MESSAGE, resolveDestinationAccountDisplay } from '../../utils/lineDestinationAccount.js'
+import { resolveAutoSelectedDestinationSubinventory } from '../../utils/lineDestinationSubinventory.js'
 
 const ISSUE_TRANSACTION_TYPE_ID = 63
 const TRANSFER_TRANSACTION_TYPE_ID = 64
@@ -111,6 +112,24 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
+
+  // Phase G5A: once the current organization's authorized destination list has finished loading,
+  // auto-select a single option if the Transfer line's Destination Subinventory is still empty.
+  // Never runs for Issue lines (isTransfer guard). Idempotent like the Source Subinventory auto-
+  // select in MovementRequestHeaderForm.jsx - once form.destinationSubinventory is set, `resolved
+  // === form.destinationSubinventory` and this is a no-op. Re-fires naturally whenever the
+  // authorized list is re-resolved while the field remains empty: after handleItemSelect switches a
+  // freshly-selected item to Transfer (which preserves an existing value or leaves '' - see that
+  // handler), or after organizationCode changes the destination-subinventories fetch.
+  useEffect(() => {
+    if (!isTransfer) return
+    if (destinationSubinventories.loading) return
+    const resolved = resolveAutoSelectedDestinationSubinventory(form.destinationSubinventory, destinationSubinventories.data)
+    if (resolved !== form.destinationSubinventory) {
+      set('destinationSubinventory', resolved)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTransfer, destinationSubinventories.loading, destinationSubinventories.data.length, organizationCode, form.destinationSubinventory])
 
   // An existing line's item must be re-resolved against CURRENT item reference data — Oracle's item
   // status and valid-UOM set can both change after a draft line was originally saved. Runs once on

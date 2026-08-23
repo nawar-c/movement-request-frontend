@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { ReferenceSelect } from '../common/ReferenceSelect.jsx'
 import { useOrganizations, useSubinventories } from '../../hooks/useReferenceData.js'
+import { resolveAutoSelectedSourceSubinventory } from '../../utils/movementRequestHeader.js'
 
 export function MovementRequestHeaderForm({ header, onChange, errors = {}, disabled }) {
   // TODO(security): once user-based organization restrictions ship, this should consume an
@@ -20,6 +22,25 @@ export function MovementRequestHeaderForm({ header, onChange, errors = {}, disab
     // job once the user has picked one Source, and must not keep showing after that.
     onChange({ ...header, sourceSubinventory: value, sourceSubinventoryConflict: false })
   }
+
+  // Phase G5A: once the current organization's source list has finished loading, auto-select a
+  // single valid Source Subinventory if the field is still empty. Runs on every render (sourceOptions
+  // is a fresh array each time), but resolveAutoSelectedSourceSubinventory is idempotent - once
+  // header.sourceSubinventory is set, `resolved === header.sourceSubinventory` and this is a no-op,
+  // so it never loops. Naturally re-fires after applyOrgChange clears sourceSubinventory to null on
+  // an organization change, once the new organization's subinventories have loaded.
+  useEffect(() => {
+    if (subinventories.loading) return
+    const resolved = resolveAutoSelectedSourceSubinventory(
+      header.sourceSubinventory,
+      sourceOptions,
+      header.sourceSubinventoryConflict,
+    )
+    if (resolved !== header.sourceSubinventory) {
+      setSourceSubinventory(resolved)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subinventories.loading, header.inventoryOrganization, sourceOptions.length, header.sourceSubinventory, header.sourceSubinventoryConflict])
 
   return (
     <div className="form-grid">

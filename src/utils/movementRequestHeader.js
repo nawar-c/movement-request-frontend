@@ -55,6 +55,22 @@ export function toEditHeaderFormState(mr) {
   }
 }
 
+// Phase G5A: auto-select a Source Subinventory when it's the only valid option for the currently
+// selected Inventory Organization AND the field is genuinely empty. Two cases deliberately do NOT
+// count as "empty" here even though the field's value is falsy:
+//   - an existing value is present (never overwrite a real selection, including one restored from
+//     history via toEditHeaderFormState below);
+//   - hasConflict is true (deriveHeaderSourceSubinventory's conflict state IS historical data — the
+//     lines genuinely disagree - silently picking the org's one valid option would hide that
+//     disagreement from the user instead of letting them consciously resolve it, same as before).
+// 0 or 2+ options: returns the current value unchanged (null stays null) - existing required-field
+// validation and the "select one" UX are untouched.
+export function resolveAutoSelectedSourceSubinventory(currentValue, sourceOptions, hasConflict) {
+  if (currentValue || hasConflict) return currentValue
+  if (!Array.isArray(sourceOptions) || sourceOptions.length !== 1) return currentValue
+  return sourceOptions[0].code
+}
+
 // Every line field (item, source/destination subinventory or account) is organization-scoped, and
 // so is the header Source Subinventory — a changed organization must clear both rather than
 // silently retaining a selection that may not even exist as an option for the new organization.
