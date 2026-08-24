@@ -44,3 +44,13 @@ export function truncate(text, maxLength) {
   if (!text) return text
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text
 }
+
+// Phase G5B.3 — Attention worklist's Source/Destination Subinventory display. The backend's
+// `*Multiple` boolean is authoritative (a Movement Request can have lines spanning several source or
+// destination subinventories) — this never infers ambiguity itself by inspecting arrays/strings, and
+// the multiple flag always wins even if a single value also happens to be present.
+export function formatSubinventoryDisplay(value, isMultiple) {
+  if (isMultiple === true) return 'Multiple'
+  if (value) return value
+  return '—'
+}

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { OracleStatusBadge, LineClosureBadge } from '../common/StatusBadge.jsx'
 import { ChartEmptyState, ChartError } from './ChartStates.jsx'
 import { PaginationBar } from './PaginationBar.jsx'
+import { formatSubinventoryDisplay } from '../../utils/formatters.js'
 
 // Known reason values confirmed against the live /api/reports/attention contract (or named in the
 // approved Phase 3 design). This is a presentation lookup only — formatReason() below always falls
@@ -68,6 +69,8 @@ export function AttentionWorklist({ data, loading, hasLoadedOnce, error, onRetry
                     <th>Line Closure</th>
                     <th>Request Age</th>
                     <th>Organization</th>
+                    <th>Source</th>
+                    <th>Destination</th>
                     <th>Requested By</th>
                   </tr>
                 </thead>
@@ -105,6 +108,8 @@ export function AttentionWorklist({ data, loading, hasLoadedOnce, error, onRetry
                       </td>
                       <td className="num-cell">{item.requestAgeDays}d</td>
                       <td>{item.organizationCode}</td>
+                      <td>{formatSubinventoryDisplay(item.sourceSubinventory, item.sourceSubinventoryMultiple)}</td>
+                      <td>{formatSubinventoryDisplay(item.destinationSubinventory, item.destinationSubinventoryMultiple)}</td>
                       <td>{item.createdByEmployeeName || item.createdByUsername || '—'}</td>
                     </tr>
                   ))}
