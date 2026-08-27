@@ -25,6 +25,19 @@ export function resolveUomForItem(validUoms) {
   return primary ? primary.uomCode : validUoms[0].uomCode
 }
 
+// Confirmed customer business rule: a Movement Request line may only use an item's PRIMARY UOM —
+// the Secondary UOM (when Oracle's dual-UOM tracking is enabled for an item) remains real, valid
+// Oracle reference data returned by /api/reference/items (validUoms is untouched, still exposes
+// both), but is never an allowed choice for a line's own transaction uom going forward. Mirrors the
+// backend's getAllowedMovementRequestUoms (itemUom.service.js) exactly, so the two can never
+// disagree. Returns zero or one record — never more — regardless of whether the item is
+// dual-UOM-tracked. Used only for a FRESH item (re-)selection; an unchanged historical line's
+// already-stored UOM is preserved separately (see LineEditDrawer's mount-time reconciliation),
+// never narrowed down to primary-only just because the request happens to be reloaded/re-saved.
+export function getAllowedMovementRequestUoms(validUoms) {
+  return (validUoms || []).filter((u) => u.isPrimary)
+}
+
 // Historical Edit re-resolution: a stored line's UOM may no longer be one of its item's currently
 // valid UOMs (Oracle data can change over time). It must never be silently kept as if still fine —
 // clear it and require the user to explicitly re-select before the line can be saved. View mode is

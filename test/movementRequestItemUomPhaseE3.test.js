@@ -11,6 +11,7 @@ import {
   buildItemUnavailableMessage,
   buildItemInactiveMessage,
   buildStaleUomMessage,
+  getAllowedMovementRequestUoms,
 } from '../src/utils/lineItemUom.js'
 import { serializeLineForApi } from '../src/api/movementRequestSerializers.js'
 
@@ -46,12 +47,14 @@ describe('B — One valid UOM (real item 102499, MEDICAL_CONSUMABLE)', () => {
     assert.equal(resolveUomForItem(ITEM_102499_VALID_UOMS), 'Ea')
   })
 
-  test('read-only representation: LineEditDrawer.jsx renders a disabled/readOnly input for the single-UOM case', () => {
+  test('read-only representation: LineEditDrawer.jsx renders a disabled/readOnly UOM input unconditionally (Primary-UOM-only rule - validUoms can never exceed length 1 by construction, so there is no length check left to make)', () => {
     const path = fileURLToPath(
       new URL('../src/components/movement-request/LineEditDrawer.jsx', import.meta.url),
     )
     const source = readFileSync(path, 'utf8')
-    assert.match(source, /validUoms\.length === 1/)
+    const match = source.match(/label">\s*UOM<span[^]*?<\/div>\s*<\/div>/)
+    assert.ok(match, 'UOM field block not found')
+    assert.match(match[0], /value=\{form\.uom\}\s+disabled\s+readOnly/)
   })
 })
 
@@ -225,15 +228,15 @@ describe('Item-status handling — fail-closed, matches the backend authoritativ
 })
 
 describe('Global UOM control removal — primary UOM field only (source-structure check)', () => {
-  test('the primary UOM field sources its options from validUoms, not the global UOM list', () => {
+  test('the primary UOM field is never a selectable dropdown of validUoms - Primary-UOM-only MR rule means there is never more than one option to choose from', () => {
     const path = fileURLToPath(
       new URL('../src/components/movement-request/LineEditDrawer.jsx', import.meta.url),
     )
     const source = readFileSync(path, 'utf8')
-    assert.match(source, /options=\{validUoms\}/)
+    assert.doesNotMatch(source, /options=\{validUoms\}/, 'no ReferenceSelect should ever be built from validUoms for the primary UOM field')
   })
 
-  test('Secondary UOM was investigated and confirmed to be Oracle\'s own separate, not-yet-mapped dual-quantity payload concept — intentionally reverted to the global UOM list, not validUoms', () => {
+  test('Secondary UOM (Add-Line-only removed, still present for editing a historical line) still sources from the global UOM list, not validUoms - Oracle\'s own separate, not-yet-mapped dual-quantity payload concept, unaffected by the Primary-UOM-only rule', () => {
     const path = fileURLToPath(
       new URL('../src/components/movement-request/LineEditDrawer.jsx', import.meta.url),
     )
@@ -254,5 +257,89 @@ describe('L — E1/E2 tests remain passing', () => {
     // Actual E1/E2 regression is verified by running their own test files in the same `npm test`
     // run (see test/movementRequestHeaderPhaseE1.test.js and movementRequestHeaderPhaseE2.test.js).
     assert.ok(true)
+  })
+})
+
+/**
+ * Confirmed customer business rule: a Movement Request line may only use an item's PRIMARY UOM.
+ * The item's Secondary UOM remains real Oracle reference data (validUoms from
+ * /api/reference/items is untouched, still exposes both) but is never offered as a choice for a
+ * line's own transaction uom. Mirrors the backend's itemUom.service.js#getAllowedMovementRequestUoms
+ * exactly - see movement-request-backend/test/itemUom.service.test.js for the backend-side coverage.
+ */
+describe('getAllowedMovementRequestUoms - Primary-UOM-only MR business rule', () => {
+  test('A. an item with only a primary UOM -> that one UOM (the only option)', () => {
+    const result = getAllowedMovementRequestUoms(ITEM_102499_VALID_UOMS)
+    assert.deepEqual(result, ITEM_102499_VALID_UOMS)
+  })
+
+  test('B/C/D. an item with Primary + Secondary UOM (7208480-style) -> only the Primary is returned, Secondary excluded', () => {
+    const result = getAllowedMovementRequestUoms(ITEM_7208480_VALID_UOMS)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].uomCode, 'BLP')
+    assert.equal(result[0].isPrimary, true)
+  })
+
+  test('G. no valid UOMs at all -> empty, never invents one', () => {
+    assert.deepEqual(getAllowedMovementRequestUoms([]), [])
+  })
+
+  test('null/undefined validUoms -> empty, never throws', () => {
+    assert.deepEqual(getAllowedMovementRequestUoms(null), [])
+    assert.deepEqual(getAllowedMovementRequestUoms(undefined), [])
+  })
+})
+
+/**
+ * Historical preservation (source-structure checks - the actual reconciliation runs inside a React
+ * effect, exercised end-to-end by the backend's equivalent resolveAndValidateLines tests; this repo
+ * has no rendering framework wired in, matching the existing Phase E3 convention above of asserting
+ * on the drawer's source shape for effect-embedded behavior).
+ */
+describe('H/I. LineEditDrawer.jsx historical UOM preservation (source-structure check)', () => {
+  const path = fileURLToPath(new URL('../src/components/movement-request/LineEditDrawer.jsx', import.meta.url))
+  const source = readFileSync(path, 'utf8')
+
+  test('the mount-time historical reconciliation still checks the FULL Oracle reference set (nextValidUoms), not the primary-only set - so a stored Secondary UOM is never treated as stale merely because of this rule', () => {
+    assert.match(source, /reconcileHistoricalUom\(initialLine\.uom, nextValidUoms\)/)
+  })
+
+  test('a successfully-preserved historical line is displayed as exactly its own one resolved record, never re-offered as a Primary+Secondary choice', () => {
+    assert.match(source, /preservedRecord \? \[preservedRecord\] : getAllowedMovementRequestUoms\(nextValidUoms\)/)
+  })
+
+  test('a freshly (re-)selected item resolves through getAllowedMovementRequestUoms - Primary-only, never the raw item.validUoms', () => {
+    const match = source.match(/function handleItemSelect[^]*?setValidUoms\(nextValidUoms\)/)
+    assert.ok(match, 'handleItemSelect body not found')
+    assert.match(match[0], /getAllowedMovementRequestUoms\(item\.validUoms \|\| \[\]\)/)
+  })
+})
+
+describe('Secondary UOM / Secondary Quantity - removed from NEW line entry, preserved for editing an existing line', () => {
+  const path = fileURLToPath(new URL('../src/components/movement-request/LineEditDrawer.jsx', import.meta.url))
+  const source = readFileSync(path, 'utf8')
+
+  test('the Secondary Quantity/Secondary UOM fields are gated behind `initialLine` - never rendered for a brand-new (Add) line', () => {
+    const match = source.match(/\{initialLine \? \([^]*?Secondary UOM[^]*?\) : null\}/)
+    assert.ok(match, 'expected the Secondary Quantity/Secondary UOM block to be conditionally rendered on initialLine')
+    assert.match(match[0], /Secondary Quantity/)
+    assert.match(match[0], /Secondary UOM/)
+  })
+
+  test('no destructive change to historical stored data - buildInitialForm still carries secondaryRequestedQuantity/secondaryUom over unchanged for an existing line ({ ...initialLine })', () => {
+    assert.match(source, /function buildInitialForm\(initialLine, headerDefaults\) \{\s*\n\s*if \(initialLine\) return \{ \.\.\.initialLine \}/)
+  })
+})
+
+describe('K. Oracle submission still sends UOMCode using the resolved (Primary) code, never the human-readable name - unaffected by this frontend change', () => {
+  test('serializeLineForApi still sends line.uom verbatim (whatever code the drawer resolved), not a name or validUoms metadata', () => {
+    const body = serializeLineForApi({
+      itemNumber: '7208480',
+      requestedQuantity: 5,
+      uom: 'BLP',
+      validUoms: [{ itemNumber: '7208480', uomCode: 'BLP', uomName: null, isPrimary: true }],
+    })
+    assert.equal(body.uom, 'BLP')
+    assert.equal('validUoms' in body, false)
   })
 })

@@ -12,6 +12,7 @@ import {
   buildItemUnavailableMessage,
   buildItemInactiveMessage,
   buildStaleUomMessage,
+  getAllowedMovementRequestUoms,
 } from '../../utils/lineItemUom.js'
 import { DEFAULT_ACCOUNT_NOT_CONFIGURED_MESSAGE, resolveDestinationAccountDisplay } from '../../utils/lineDestinationAccount.js'
 import { resolveAutoSelectedDestinationSubinventory } from '../../utils/lineDestinationSubinventory.js'
@@ -153,9 +154,18 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
           setValidUoms([])
           return
         }
+        // Primary-UOM-only MR rule, historical preservation: reconcile against the FULL Oracle
+        // reference set (nextValidUoms — Primary + Secondary), never the primary-only set, so a
+        // line already stored with the item's Secondary UOM (legitimately valid before this rule
+        // existed) is never treated as stale just because the rule changed. What's then shown/
+        // offered for this render is exactly the ONE record matching the resolved uom (never a
+        // Primary+Secondary choice) if reconciliation succeeded, or the primary-only set (0 or 1
+        // records) if it failed and the line must be corrected - mirrors the backend's
+        // resolveAndValidateLines existingLines behavior exactly.
         const nextValidUoms = match.validUoms || []
-        setValidUoms(nextValidUoms)
         const { uom, invalid } = reconcileHistoricalUom(initialLine.uom, nextValidUoms)
+        const preservedRecord = !invalid ? nextValidUoms.find((u) => u.uomCode === uom) : null
+        setValidUoms(preservedRecord ? [preservedRecord] : getAllowedMovementRequestUoms(nextValidUoms))
         setForm((prev) => ({
           ...prev,
           itemDescription: match.description,
@@ -224,7 +234,11 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
     // Do NOT trust stale values from the previously selected item — every field below is rebuilt
     // entirely from this item's own Oracle-returned data, including clearing the UOM first before
     // re-deriving it purely from this item's validUoms (never carried over from the old item).
-    const nextValidUoms = item.validUoms || []
+    // Primary-UOM-only MR rule: a freshly (re-)selected item is always resolved to ONLY its Primary
+    // UOM (getAllowedMovementRequestUoms) — the Secondary UOM remains valid Oracle reference data
+    // but is never offered as a choice here, unlike an untouched historical line's preserved value
+    // (see the mount effect above).
+    const nextValidUoms = getAllowedMovementRequestUoms(item.validUoms || [])
     setValidUoms(nextValidUoms)
     setForm((prev) => ({
       ...prev,
@@ -349,23 +363,12 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
               </label>
               {resolvingItem ? (
                 <input type="text" className="form-input" value="Verifying item..." disabled readOnly />
-              ) : validUoms.length === 1 ? (
-                // Exactly one valid Oracle UOM for this item — auto-selected, shown read-only, never
-                // a dropdown with a single option the user could second-guess.
-                <input type="text" className="form-input" value={form.uom} disabled readOnly />
-              ) : validUoms.length > 1 ? (
-                // Options come ONLY from this item's own validUoms — never the old global UOM list.
-                <ReferenceSelect
-                  options={validUoms}
-                  valueKey="uomCode"
-                  labelKey="uomCode"
-                  value={form.uom}
-                  onChange={(v) => set('uom', v)}
-                  hasError={Boolean(errors.uom)}
-                  placeholder="Select UOM..."
-                />
               ) : (
-                <input type="text" className="form-input" value="" disabled readOnly />
+                // Primary-UOM-only MR rule: validUoms here is always the single record actually in
+                // effect for this line (the item's Primary UOM for a fresh selection, or an
+                // untouched historical line's own preserved value) — never a Primary+Secondary
+                // choice, so this is always read-only, never a dropdown the user could pick from.
+                <input type="text" className="form-input" value={form.uom} disabled readOnly />
               )}
               {!resolvingItem && form.itemNumber && !itemResolutionError && validUoms.length === 0 ? (
                 <div className="form-error">{ZERO_VALID_UOM_MESSAGE}</div>
@@ -472,27 +475,40 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
               />
             </div>
 
-            <div className="form-field">
-              <label className="form-label">Secondary Quantity</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className="form-input"
-                value={form.secondaryRequestedQuantity || ''}
-                onChange={(e) => set('secondaryRequestedQuantity', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label className="form-label">Secondary UOM</label>
-              <ReferenceSelect
-                options={uoms.data}
-                value={form.secondaryUom}
-                onChange={(v) => set('secondaryUom', v)}
-                loading={uoms.loading}
-                placeholder="Select UOM..."
-              />
-            </div>
+            {/*
+              Primary-UOM-only MR rule: Secondary Quantity/Secondary UOM have never been mapped to
+              Oracle's write payload (SecondaryUOMCode/SecondaryRequestedQuantity are confirmed
+              deliberately deferred - see OracleFusionService.js's createMovementRequest field-
+              mapping table) and now that MR lines are Primary-UOM-only, these fields have no
+              legitimate business function for a brand-new line - shown only when editing an
+              existing line that may already carry a historical stored value, never for Add Line, so
+              nothing here is destroyed or hidden from an existing record, only kept off new entry.
+            */}
+            {initialLine ? (
+              <>
+                <div className="form-field">
+                  <label className="form-label">Secondary Quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    className="form-input"
+                    value={form.secondaryRequestedQuantity || ''}
+                    onChange={(e) => set('secondaryRequestedQuantity', e.target.value)}
+                  />
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Secondary UOM</label>
+                  <ReferenceSelect
+                    options={uoms.data}
+                    value={form.secondaryUom}
+                    onChange={(v) => set('secondaryUom', v)}
+                    loading={uoms.loading}
+                    placeholder="Select UOM..."
+                  />
+                </div>
+              </>
+            ) : null}
 
             <div className="form-field">
               <label className="form-label">Lot Number</label>

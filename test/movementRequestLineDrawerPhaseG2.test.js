@@ -159,18 +159,22 @@ describe('E — Phase E2 removals remain in effect', () => {
 // ---------------------------------------------------------------------------------------------
 // F — Phase E3 UOM branching intact
 // ---------------------------------------------------------------------------------------------
-describe('F — primary UOM branching (one/multi/zero) is unchanged', () => {
-  test('the exact three-way validUoms.length branch (===1 read-only, >1 dropdown, ===0 blocked) is present', () => {
-    const source = drawerSource()
-    assert.match(source, /validUoms\.length === 1 \? \(/)
-    assert.match(source, /validUoms\.length > 1 \? \(/)
-    assert.match(source, /ZERO_VALID_UOM_MESSAGE/)
-  })
-
-  test('UOM options still come only from validUoms (never a global list) for the primary field', () => {
+/**
+ * Superseded by the confirmed customer Primary-UOM-only Movement Request business rule: the old
+ * one/multi/zero three-way branch (which offered a Primary+Secondary dropdown when an item had
+ * both) no longer exists - validUoms for the primary UOM field can never exceed length 1 now
+ * (see getAllowedMovementRequestUoms in utils/lineItemUom.js), so there is nothing left to branch
+ * on beyond "resolving" vs "resolved" (read-only either way). Full coverage of the new rule lives in
+ * test/movementRequestItemUomPhaseE3.test.js; this block only re-confirms the G2 presentation fix
+ * didn't reintroduce the old dropdown.
+ */
+describe('F — primary UOM field remains read-only-only (no Primary+Secondary dropdown reintroduced)', () => {
+  test('the primary UOM field renders a disabled/readOnly input unconditionally once resolved - no ReferenceSelect/dropdown branch exists for it', () => {
     const source = drawerSource()
     const uomFieldBlock = source.slice(source.indexOf('UOM<span'), source.indexOf('Required Date'))
-    assert.match(uomFieldBlock, /options=\{validUoms\}/)
+    assert.match(uomFieldBlock, /value=\{form\.uom\}\s+disabled\s+readOnly/)
+    assert.doesNotMatch(uomFieldBlock, /options=\{validUoms\}/)
+    assert.match(uomFieldBlock, /ZERO_VALID_UOM_MESSAGE/)
   })
 })
 
