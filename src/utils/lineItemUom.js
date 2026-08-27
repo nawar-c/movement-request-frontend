@@ -38,6 +38,18 @@ export function getAllowedMovementRequestUoms(validUoms) {
   return (validUoms || []).filter((u) => u.isPrimary)
 }
 
+// UOM display-name phase: the transaction value (line.uom / uomCode, e.g. "TBP") stays the code
+// everywhere else - form state, validation, serialization, Oracle's UOMCode payload. This is the
+// one place that resolves what the USER sees for that code: the item's own Oracle-supplied
+// human-readable name (e.g. "TUBE PACK") when available, falling back to the code itself when it
+// isn't (mock/local data with no name populated, or a genuinely missing Oracle name) - never blank,
+// never invented, never a mismatch with a different record's name.
+export function resolveUomDisplayLabel(uomCode, validUoms) {
+  if (!uomCode) return ''
+  const match = (validUoms || []).find((u) => u.uomCode === uomCode)
+  return (match && match.uomName) || uomCode
+}
+
 // Historical Edit re-resolution: a stored line's UOM may no longer be one of its item's currently
 // valid UOMs (Oracle data can change over time). It must never be silently kept as if still fine —
 // clear it and require the user to explicitly re-select before the line can be saved. View mode is

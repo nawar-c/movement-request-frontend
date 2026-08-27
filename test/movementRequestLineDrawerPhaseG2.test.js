@@ -172,7 +172,9 @@ describe('F — primary UOM field remains read-only-only (no Primary+Secondary d
   test('the primary UOM field renders a disabled/readOnly input unconditionally once resolved - no ReferenceSelect/dropdown branch exists for it', () => {
     const source = drawerSource()
     const uomFieldBlock = source.slice(source.indexOf('UOM<span'), source.indexOf('Required Date'))
-    assert.match(uomFieldBlock, /value=\{form\.uom\}\s+disabled\s+readOnly/)
+    // UOM display-name phase: the input shows the resolved display label (Oracle name, falling back
+    // to the code), not form.uom directly - form.uom remains the internal/submission value.
+    assert.match(uomFieldBlock, /value=\{resolveUomDisplayLabel\(form\.uom, validUoms\)\}\s+disabled\s+readOnly/)
     assert.doesNotMatch(uomFieldBlock, /options=\{validUoms\}/)
     assert.match(uomFieldBlock, /ZERO_VALID_UOM_MESSAGE/)
   })

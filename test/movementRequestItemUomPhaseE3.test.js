@@ -12,6 +12,7 @@ import {
   buildItemInactiveMessage,
   buildStaleUomMessage,
   getAllowedMovementRequestUoms,
+  resolveUomDisplayLabel,
 } from '../src/utils/lineItemUom.js'
 import { serializeLineForApi } from '../src/api/movementRequestSerializers.js'
 
@@ -54,7 +55,9 @@ describe('B — One valid UOM (real item 102499, MEDICAL_CONSUMABLE)', () => {
     const source = readFileSync(path, 'utf8')
     const match = source.match(/label">\s*UOM<span[^]*?<\/div>\s*<\/div>/)
     assert.ok(match, 'UOM field block not found')
-    assert.match(match[0], /value=\{form\.uom\}\s+disabled\s+readOnly/)
+    // UOM display-name phase: the input shows the resolved display label (Oracle name, falling back
+    // to the code), not form.uom directly - form.uom remains the internal/submission value.
+    assert.match(match[0], /value=\{resolveUomDisplayLabel\(form\.uom, validUoms\)\}\s+disabled\s+readOnly/)
   })
 })
 
@@ -291,6 +294,53 @@ describe('getAllowedMovementRequestUoms - Primary-UOM-only MR business rule', ()
 })
 
 /**
+ * UOM display-name phase: the transaction value (uomCode, e.g. "TBP") stays the internal/submission
+ * value everywhere - this helper only resolves what the UI shows for that code. Mirrors the
+ * backend's OracleFusionService.getItems/itemUom.service.js additive primaryUomName/secondaryUomName
+ * -> uomName population exactly (see movement-request-backend/test/itemUom.service.test.js).
+ */
+describe('resolveUomDisplayLabel - UI display label, separate from the internal/submission UOM code', () => {
+  test('7203042-style: code TBP + name TUBE PACK -> displays TUBE PACK', () => {
+    const validUoms = [
+      { itemNumber: '7203042', uomCode: 'TBP', uomName: 'TUBE PACK', isPrimary: true },
+      { itemNumber: '7203042', uomCode: 'Tub', uomName: 'TUBE', isPrimary: false },
+    ]
+    assert.equal(resolveUomDisplayLabel('TBP', validUoms), 'TUBE PACK')
+  })
+
+  test('7205096-style: code AUP + name AMPOULE PACK -> displays AMPOULE PACK', () => {
+    const validUoms = [
+      { itemNumber: '7205096', uomCode: 'AUP', uomName: 'AMPOULE PACK', isPrimary: true },
+      { itemNumber: '7205096', uomCode: 'AMP', uomName: 'AMPOULE', isPrimary: false },
+    ]
+    assert.equal(resolveUomDisplayLabel('AUP', validUoms), 'AMPOULE PACK')
+  })
+
+  test('missing/null uomName (e.g. mock data without names) -> falls back to the code itself', () => {
+    assert.equal(resolveUomDisplayLabel('TBP', [{ itemNumber: '7203042', uomCode: 'TBP', uomName: null, isPrimary: true }]), 'TBP')
+  })
+
+  test('no matching record for the code at all -> falls back to the raw code passed in, never blank', () => {
+    assert.equal(resolveUomDisplayLabel('TBP', []), 'TBP')
+    assert.equal(resolveUomDisplayLabel('TBP', ITEM_102499_VALID_UOMS), 'TBP')
+  })
+
+  test('empty/falsy uomCode -> empty string, never throws on null/undefined validUoms', () => {
+    assert.equal(resolveUomDisplayLabel('', null), '')
+    assert.equal(resolveUomDisplayLabel(null, undefined), '')
+  })
+
+  test('never returns a different record\'s name - a Secondary UOM\'s name is never shown for the Primary code, or vice versa', () => {
+    const validUoms = [
+      { itemNumber: '7203042', uomCode: 'TBP', uomName: 'TUBE PACK', isPrimary: true },
+      { itemNumber: '7203042', uomCode: 'Tub', uomName: 'TUBE', isPrimary: false },
+    ]
+    assert.equal(resolveUomDisplayLabel('Tub', validUoms), 'TUBE')
+    assert.notEqual(resolveUomDisplayLabel('TBP', validUoms), 'TUBE')
+  })
+})
+
+/**
  * Historical preservation (source-structure checks - the actual reconciliation runs inside a React
  * effect, exercised end-to-end by the backend's equivalent resolveAndValidateLines tests; this repo
  * has no rendering framework wired in, matching the existing Phase E3 convention above of asserting
@@ -312,6 +362,18 @@ describe('H/I. LineEditDrawer.jsx historical UOM preservation (source-structure 
     const match = source.match(/function handleItemSelect[^]*?setValidUoms\(nextValidUoms\)/)
     assert.ok(match, 'handleItemSelect body not found')
     assert.match(match[0], /getAllowedMovementRequestUoms\(item\.validUoms \|\| \[\]\)/)
+  })
+
+  test('UOM display-name phase: the read-only UOM input renders resolveUomDisplayLabel(form.uom, validUoms), not form.uom directly - display and internal value stay visually distinct in source', () => {
+    assert.match(source, /value=\{resolveUomDisplayLabel\(form\.uom, validUoms\)\}/)
+  })
+
+  test('form.uom itself is untouched - it is what onSave receives (via `onSave(form)`), never renamed to a label/name field', () => {
+    assert.match(source, /onSave\(form\)/)
+    // The state setter that derives form.uom on selection/reconciliation still assigns the resolved
+    // CODE (resolveUomForItem / reconcileHistoricalUom's `uom`), never a uomName lookup.
+    assert.match(source, /uom: resolveUomForItem\(nextValidUoms\)/)
+    assert.match(source, /const \{ uom, invalid \} = reconcileHistoricalUom\(initialLine\.uom, nextValidUoms\)/)
   })
 })
 

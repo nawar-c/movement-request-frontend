@@ -13,6 +13,7 @@ import {
   buildItemInactiveMessage,
   buildStaleUomMessage,
   getAllowedMovementRequestUoms,
+  resolveUomDisplayLabel,
 } from '../../utils/lineItemUom.js'
 import { DEFAULT_ACCOUNT_NOT_CONFIGURED_MESSAGE, resolveDestinationAccountDisplay } from '../../utils/lineDestinationAccount.js'
 import { resolveAutoSelectedDestinationSubinventory } from '../../utils/lineDestinationSubinventory.js'
@@ -368,7 +369,16 @@ export function LineEditDrawer({ organizationCode, initialLine, headerDefaults, 
                 // effect for this line (the item's Primary UOM for a fresh selection, or an
                 // untouched historical line's own preserved value) — never a Primary+Secondary
                 // choice, so this is always read-only, never a dropdown the user could pick from.
-                <input type="text" className="form-input" value={form.uom} disabled readOnly />
+                // UOM display-name phase: shows the Oracle human-readable name (e.g. "TUBE PACK")
+                // when available, falling back to the code — form.uom itself (the code, e.g. "TBP")
+                // is untouched and remains what's validated, saved, and sent to Oracle as UOMCode.
+                <input
+                  type="text"
+                  className="form-input"
+                  value={resolveUomDisplayLabel(form.uom, validUoms)}
+                  disabled
+                  readOnly
+                />
               )}
               {!resolvingItem && form.itemNumber && !itemResolutionError && validUoms.length === 0 ? (
                 <div className="form-error">{ZERO_VALID_UOM_MESSAGE}</div>
