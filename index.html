@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Movement Requests</title>
+
+    <!-- PWA Phase 2: installability metadata. theme_color/background_color mirror the existing
+         light-mode CSS tokens (--color-primary / --color-bg in src/styles/index.css) — not invented
+         colors. See public/manifest.webmanifest for the full manifest and public/sw.js for the
+         (deliberately no-op/passthrough) service worker this pairs with. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1e5eab" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Movement Request" />
     <!--
       Phase G4 anti-flash: applies the effective theme to <html data-theme="..."> before the first
       paint, so the page never flashes light before switching to dark (or vice versa) on load.
